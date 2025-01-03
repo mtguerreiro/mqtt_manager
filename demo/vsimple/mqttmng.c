@@ -344,14 +344,22 @@ typedef struct{
 static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
                                   MQTTPacketInfo_t * pPacketInfo,
                                   MQTTDeserializedInfo_t * pDeserializedInfo );
+
 static int mqttmngEstablishMqttSession( MQTTContext_t * pMqttContext,
                                         NetworkContext_t * pNetworkContext );
+
 static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext, 
                                     const char * pTopicFilter, 
-                                    uint16_t topicFilterLength );
+                                    uint16_t topicFilterLength,
+                                    uint16_t qos );
+
 static int mqttmngWaitForPacketAck( MQTTContext_t * pMqttContext,
                                     uint16_t usPacketIdentifier,
                                     uint32_t ulTimeout );
+
+static int32_t mqttmngPublishListComponents(void);
+
+static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload);
 //=============================================================================
 
 //=============================================================================
@@ -419,36 +427,13 @@ int32_t mqttmngInit(void){
 //-----------------------------------------------------------------------------
 void mqttmngRun(void){
 
-    char buf[MQTT_MNG_WRITE_BUFFER_SIZE] = {0};
-    uint32_t k;
-
-    /* TODO: improve forming the component topic's message */
-    for(k = 0; k < MQTT_MNG_COMP_END; k++){
-        strlcat(buf, mqttmng.names[k], sizeof(buf));
-        strlcat(buf, ":", sizeof(buf));
-        strlcat(buf, mqttmng.types[k], sizeof(buf));        
-        if( mqttmng.flags[k] && strlen(mqttmng.flags[k]) ){
-            strlcat(buf, "-", sizeof(buf));
-            strlcat(buf, mqttmng.flags[k], sizeof(buf));
-        }
-        strlcat(buf, ";", sizeof(buf));
-    }
-
-#if( MQTT_MNG_CONFIG_DBG )
-    printf("%sComponents: %s\n", MQTT_MNG_DBF_PREFIX, buf);
-    fflush( stdout );
-#endif
+    mqttmngPublishListComponents();
 
 	while (1)
 	{
         MQTT_ProcessLoop( &mqttmng.mqttContext );
         Clock_SleepMs(1000);
 	}
-
-#if( MQTT_MNG_CONFIG_DBG )
-	printf("%sStopping\n", MQTT_MNG_DBF_PREFIX);
-#endif
-
 }
 //-----------------------------------------------------------------------------
 int32_t mqttmngAddComponent(uint32_t id, const char *name, const char *type, const char *flags){
@@ -468,6 +453,8 @@ int32_t mqttmngAddComponent(uint32_t id, const char *name, const char *type, con
 //-----------------------------------------------------------------------------
 int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload){
     
+    int returnStatus = EXIT_SUCCESS;
+
     if( id >= MQTT_MNG_COMP_END ) return -1;
 
     char buf[MQTT_MNG_WRITE_BUFFER_SIZE] = {0};
@@ -489,45 +476,7 @@ int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload
     fflush( stdout );
 #endif
 
-    int returnStatus = EXIT_SUCCESS;
-
-    MQTTStatus_t mqttStatus = MQTTSuccess;
-    MQTTPublishInfo_t publishInfo;
-    uint16_t pubPacketId = MQTT_PACKET_ID_INVALID;
-    MQTTContext_t * pMqttContext = &mqttmng.mqttContext;
-
-    assert( pMqttContext != NULL );
-
-    ( void ) memset( &publishInfo, 0x00, sizeof( MQTTPublishInfo_t ) );
-
-    if( returnStatus == EXIT_FAILURE )
-    {
-        LogError( ( "Unable to find a free spot for outgoing PUBLISH message.\n\n" ) );
-    }
-    else
-    {
-        publishInfo.qos = payload->qos;
-        publishInfo.pTopicName = buf;
-        publishInfo.topicNameLength = len;
-        publishInfo.pPayload = payload->data;
-        publishInfo.payloadLength = payload->size;
-
-        /* Get a new packet ID for the publish. */
-        pubPacketId = MQTT_GetPacketId( pMqttContext );
-
-        /* Send PUBLISH packet. */
-        mqttStatus = MQTT_Publish( pMqttContext,
-                                   &publishInfo,
-                                   pubPacketId );
-
-        if( mqttStatus != MQTTSuccess )
-        {
-            LogError( ( "Failed to send PUBLISH packet to broker with error = %u.",
-                        mqttStatus ) );
-            returnStatus = EXIT_FAILURE;
-        }
-
-    }
+    returnStatus = mqttmngPublishBare(buf, payload);
 
 #if( MQTT_MNG_CONFIG_DBG )
     printf("%sPublish status %d\n", MQTT_MNG_DBF_PREFIX, returnStatus);
@@ -537,7 +486,7 @@ int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload
     return returnStatus;
 }
 //-----------------------------------------------------------------------------
-int32_t mqttmngSubscribe(uint32_t id, const char *topic, mqttmngSubscrCb_t callback){
+int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSubscrCb_t callback){
 
 
     if( id >= MQTT_MNG_COMP_END ) return -1;
@@ -583,7 +532,8 @@ int32_t mqttmngSubscribe(uint32_t id, const char *topic, mqttmngSubscrCb_t callb
 
         returnStatus = mqttmngSubscribeToTopic( pContext,
                                          &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1],
-                                         len );
+                                         len,
+                                         qos );
     }
 
     if( returnStatus != EXIT_SUCCESS )
@@ -609,6 +559,96 @@ int32_t mqttmngSubscribe(uint32_t id, const char *topic, mqttmngSubscrCb_t callb
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
+static int32_t mqttmngPublishListComponents(void){
+
+    int returnStatus;
+    char buf[MQTT_MNG_WRITE_BUFFER_SIZE] = {0};
+    uint32_t k;
+
+    /* TODO: improve forming the component topic's message */
+    for(k = 0; k < MQTT_MNG_COMP_END; k++){
+        strlcat(buf, mqttmng.names[k], sizeof(buf));
+        strlcat(buf, ":", sizeof(buf));
+        strlcat(buf, mqttmng.types[k], sizeof(buf));        
+        if( mqttmng.flags[k] && strlen(mqttmng.flags[k]) ){
+            strlcat(buf, "-", sizeof(buf));
+            strlcat(buf, mqttmng.flags[k], sizeof(buf));
+        }
+        strlcat(buf, ";", sizeof(buf));
+    }
+
+	mqttmngPayload_t payload;
+	payload.data = buf;
+	payload.size = strlen(buf);
+	payload.dup = 0;
+	payload.qos = 0;
+	payload.retain = 0;
+
+#if( MQTT_MNG_CONFIG_DBG )
+    printf("%sPublishing components %s to %s\n", MQTT_MNG_DBF_PREFIX, buf, MQTT_MNG_CONFIG_COMPONENTS_TOPIC);
+    fflush( stdout );
+#endif
+
+    returnStatus = mqttmngPublishBare(MQTT_MNG_CONFIG_COMPONENTS_TOPIC, &payload);
+
+#if( MQTT_MNG_CONFIG_DBG )
+    printf("%sPublish status %d\n", MQTT_MNG_DBF_PREFIX, returnStatus);
+    fflush( stdout );
+#endif
+
+    return returnStatus;
+}
+//-----------------------------------------------------------------------------
+static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload){
+
+    int returnStatus = EXIT_SUCCESS;
+
+    MQTTStatus_t mqttStatus = MQTTSuccess;
+    MQTTPublishInfo_t publishInfo;
+    uint16_t pubPacketId = MQTT_PACKET_ID_INVALID;
+    MQTTContext_t * pMqttContext = &mqttmng.mqttContext;
+
+    assert( pMqttContext != NULL );
+
+    ( void ) memset( &publishInfo, 0x00, sizeof( MQTTPublishInfo_t ) );
+
+    if( returnStatus == EXIT_FAILURE )
+    {
+        LogError( ( "Unable to find a free spot for outgoing PUBLISH message.\n\n" ) );
+    }
+    else
+    {
+        publishInfo.qos = payload->qos;
+        publishInfo.pTopicName = topic;
+        publishInfo.topicNameLength = strlen(topic);
+        publishInfo.pPayload = payload->data;
+        publishInfo.payloadLength = payload->size;
+
+        /* Get a new packet ID for the publish. */
+        pubPacketId = MQTT_GetPacketId( pMqttContext );
+
+        /* Send PUBLISH packet. */
+        mqttStatus = MQTT_Publish( pMqttContext,
+                                   &publishInfo,
+                                   pubPacketId );
+
+        if( mqttStatus != MQTTSuccess )
+        {
+            LogError( ( "Failed to send PUBLISH packet to broker with error = %u.",
+                        mqttStatus ) );
+            returnStatus = EXIT_FAILURE;
+        }
+
+    }
+
+#if( MQTT_MNG_CONFIG_DBG )
+    printf("%sPublish status %d\n", MQTT_MNG_DBF_PREFIX, returnStatus);
+    fflush( stdout );
+#endif
+
+    return returnStatus;
+}
+//-----------------------------------------------------------------------------
 static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
                                   MQTTPacketInfo_t * pPacketInfo,
                                   MQTTDeserializedInfo_t * pDeserializedInfo )
@@ -618,6 +658,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
     assert( pDeserializedInfo != NULL );
     //assert( pDeserializedInfo->packetIdentifier != MQTT_PACKET_ID_INVALID );
 
+    LogInfo( ("Packet id: %d", pDeserializedInfo->packetIdentifier) );
     /* Handle incoming publish. The lower 4 bits of the publish packet
      * type is used for the dup, QoS, and retain flags. Hence masking
      * out the lower bits to check if the packet is publish. */
@@ -775,7 +816,8 @@ static int mqttmngEstablishMqttSession( MQTTContext_t * pMqttContext,
 //-----------------------------------------------------------------------------
 static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
                                     const char * pTopicFilter,
-                                    uint16_t topicFilterLength )
+                                    uint16_t topicFilterLength,
+                                    uint16_t qos )
 {
     int returnStatus = EXIT_SUCCESS;
     MQTTStatus_t mqttStatus;
@@ -786,9 +828,7 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
     /* Start with everything at 0. */
     ( void ) memset( ( void * ) pSubscriptionList, 0x00, sizeof( pSubscriptionList ) );
 
-    /* This demo subscribes and publishes to topics at Qos1, so the publish
-     * messages received from the broker should have QoS1 as well. */
-    pSubscriptionList[ 0 ].qos = MQTTQoS1;
+    pSubscriptionList[ 0 ].qos = qos;
     pSubscriptionList[ 0 ].pTopicFilter = pTopicFilter;
     pSubscriptionList[ 0 ].topicFilterLength = topicFilterLength;
 

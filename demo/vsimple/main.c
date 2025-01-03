@@ -93,7 +93,7 @@ int main(int argc, char** argv)
 
 	mqttmngPublish(MQTT_MNG_COMP_1, "temperature", &payload);
 
-	mqttmngSubscribe(MQTT_MNG_COMP_2, "intensity", precipitationDataCallback);
+	mqttmngSubscribe(MQTT_MNG_COMP_2, "intensity", 0, precipitationDataCallback);
 	// mqttmngSubscribe(MQTT_MNG_COMP_2, "rgb", 0, messageArrived);
 
 	mqttmngRun();

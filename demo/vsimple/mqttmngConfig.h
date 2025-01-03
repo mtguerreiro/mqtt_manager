@@ -18,6 +18,7 @@ typedef enum{
 }mqttmngComponents_t;
 
 #define MQTT_MNG_CONFIG_DEV_ID  "dev-0e3ax1"
+#define MQTT_MNG_CONFIG_COMPONENTS_TOPIC MQTT_MNG_CONFIG_DEV_ID "/components"
 
 #define MQTT_MNG_CONFIG_HOST    "localhost"
 #define MQTT_MNG_CONFIG_PORT    1883
