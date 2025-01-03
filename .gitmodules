@@ -1,0 +1,6 @@
+[submodule "coreMQTT"]
+	path = coreMQTT
+	url = https://github.com/FreeRTOS/coreMQTT
+[submodule "backoffAlgorithm"]
+	path = backoffAlgorithm
+	url = https://github.com/FreeRTOS/backoffAlgorithm
