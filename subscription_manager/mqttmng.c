@@ -21,7 +21,7 @@
 // #include "string.h"
 
 /* Include Demo Config as the first non-system header. */
-#include "demo_config.h"
+//#include "demo_config.h"
 
 /* MQTT API header. */
 #include "core_mqtt.h"

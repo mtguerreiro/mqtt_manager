@@ -30,9 +30,6 @@
 #include <string.h>
 #include <assert.h>
 
-/* Include demo config. */
-#include "demo_config.h"
-
 /* Include header for the subscription manager. */
 #include "mqtt_subscription_manager.h"
 

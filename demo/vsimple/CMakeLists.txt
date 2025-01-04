@@ -21,6 +21,10 @@ include( ${SVMQTT_PATH}/backoffAlgorithm/backoffAlgorithmFilePaths.cmake )
 # Include platform
 add_subdirectory(${SVMQTT_PATH}/platform "${PROJECT_BINARY_DIR}/platform")
 
+# Include subscription manager
+add_subdirectory(${SVMQTT_PATH}/subscription_manager "${PROJECT_BINARY_DIR}/subscription_manager")
+
+add_compile_definitions(MQTT_DO_NOT_USE_CUSTOM_CONFIG)
 add_compile_options(-Wall
         -Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
         -Wno-unused-function # we have some for the docs that aren't called
@@ -32,8 +36,6 @@ add_compile_options(-Wall
 add_executable(
     ${DEMO_NAME}
         "${DEMO_FILE}"
-        mqttmng.c
-        mqtt_subscription_manager.c
         ${MQTT_SOURCES}
         ${MQTT_SERIALIZER_SOURCES}
         ${BACKOFF_ALGORITHM_SOURCES}
@@ -42,6 +44,7 @@ add_executable(
 target_link_libraries(
     ${DEMO_NAME}
     PRIVATE
+        subscription_manager
         clock_posix
         plaintext_posix
 )
@@ -54,4 +57,5 @@ target_include_directories(
         ${SVMQTT_PATH}/platform/transport
         ${SVMQTT_PATH}/platform/clock
         ${SVMQTT_PATH}/logging
+        ${SVMQTT_PATH}/subscription_manager
 )
