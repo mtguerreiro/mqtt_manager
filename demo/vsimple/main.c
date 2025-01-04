@@ -85,7 +85,7 @@ int main(int argc, char** argv)
 	mqttmngAddComponent(MQTT_MNG_COMP_2, (const char*)"led233", (const char*)"led", (const char*)"ri");
 
 	mqttmngPayload_t payload;
-	payload.data = "Teste fjdsif";
+	payload.data = "25";
 	payload.size = strlen(payload.data);
 	payload.dup = 0;
 	payload.qos = 0;

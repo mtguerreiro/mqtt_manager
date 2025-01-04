@@ -582,7 +582,7 @@ static int32_t mqttmngPublishListComponents(void){
 	payload.size = strlen(buf);
 	payload.dup = 0;
 	payload.qos = 0;
-	payload.retain = 0;
+	payload.retain = 1;
 
 #if( MQTT_MNG_CONFIG_DBG )
     printf("%sPublishing components %s to %s\n", MQTT_MNG_DBF_PREFIX, buf, MQTT_MNG_CONFIG_COMPONENTS_TOPIC);
@@ -623,6 +623,7 @@ static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload){
         publishInfo.topicNameLength = strlen(topic);
         publishInfo.pPayload = payload->data;
         publishInfo.payloadLength = payload->size;
+        publishInfo.retain = payload->retain;
 
         /* Get a new packet ID for the publish. */
         pubPacketId = MQTT_GetPacketId( pMqttContext );
