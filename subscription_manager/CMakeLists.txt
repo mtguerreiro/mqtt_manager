@@ -5,7 +5,7 @@ add_library(subscription_manager mqttmng.c mqtt_subscription_manager.c)
 target_link_libraries(
     subscription_manager
     PRIVATE
-    clock_posix
+    clock
     plaintext_transport
 )
 

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 project(coremqtt_example)
-set(PLATFORM_NAME "Linux")
+set(PLATFORM_NAME "posix")
 
 cmake_path(SET SVMQTT_PATH NORMALIZE "${PROJECT_SOURCE_DIR}/../../")
 message("-- SVMQTT_PATH IS ${SVMQTT_PATH}")
@@ -46,7 +46,7 @@ target_link_libraries(
     ${DEMO_NAME}
     PRIVATE
         subscription_manager
-        clock_posix
+        clock
         plaintext_transport
 )
 target_include_directories(
