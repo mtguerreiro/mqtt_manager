@@ -25,15 +25,19 @@
 #include <string.h>
 
 /* POSIX sockets includes. */
-#include <errno.h>
-#include <netdb.h>
-#include <time.h>
-#include <unistd.h>
-#include <sys/time.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
+//#include <errno.h>
+//#include <netdb.h>
+//#include <time.h>
+//#include <unistd.h>
+//#include <sys/time.h>
+//#include <arpa/inet.h>
+//#include <sys/socket.h>
+#include "lwip/netif.h"
+#include "lwip/ip4_addr.h"
+#include "lwip/apps/lwiperf.h"
+#include <lwip/sockets.h>
 
-#include "sockets_posix.h"
+#include "sockets_impl.h"
 
 /*-----------------------------------------------------------*/
 
