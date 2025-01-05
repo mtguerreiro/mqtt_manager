@@ -16,7 +16,7 @@
 #include "task_svmqtt.h"
 #include "task_blink.h"
 #include "task_temperature.h"
-#include "task_tif.h"
+#include "task_led.h"
 
 /* SVMQTT */
 #include "mqttmng.h"
@@ -54,20 +54,40 @@ void taskWifiInit(void *param){
     printf("Wifi initialized.\n\r");
 
     xTaskCreate(
-        taskBlink,                          /* Function that implements the task. */
-        "blink",                            /* Text name for the task. */
-        TASK_BLINK_CONFIG_TASK_STACK_SIZE,  /* Stack size in words, not bytes. */
-        NULL,                               /* Parameter passed into the task. */
-        TASK_BLINK_CONFIG_TASK_PRIO,        /* Priority at which the task is created. */
-        NULL );                             /* Used to pass out the created task's handle. */
-
-    xTaskCreate(
         taskSvmqtt,
         "svmqtt",
         TASKS_SVMQTT_CONFIG_TASK_STACK_SIZE,
         NULL,
         TASKS_SVMQTT_CONFIG_TASK_PRIO,
         NULL );
+
+    xTaskCreate(
+        taskBlink,
+        "blink",
+        TASK_BLINK_CONFIG_TASK_STACK_SIZE,
+        NULL,
+        TASK_BLINK_CONFIG_TASK_PRIO,
+        NULL );
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    xTaskCreate(
+        taskTemperature,
+        "temperature",
+        TASK_TEMPERATURE_CONFIG_TASK_STACK_SIZE,
+        NULL,
+        TASK_TEMPERATURE_CONFIG_TASK_PRIO,
+        NULL );
+
+    vTaskDelay(650 / portTICK_PERIOD_MS);
+
+    xTaskCreate(
+        taskLed,
+        "led",
+        TASK_LED_CONFIG_TASK_STACK_SIZE,
+        NULL,
+        TASK_LED_CONFIG_TASK_PRIO,
+        NULL );   
 
     vTaskDelete(NULL);
 }

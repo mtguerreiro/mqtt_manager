@@ -5,6 +5,7 @@ add_library(${DEMO_NAME_TASKS}
     task_wifi_init.c
     task_svmqtt.c
     task_temperature.c
+    task_led.c
     )
 
 target_compile_definitions(${DEMO_NAME_TASKS} PRIVATE

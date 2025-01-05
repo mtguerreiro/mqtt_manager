@@ -11,8 +11,10 @@
 #include "task.h"
 
 /* Tasks */
-#include "tasks/task_wifi_init.h"
+#include "tasks/task_blink.h"
 #include "tasks/task_temperature.h"
+#include "tasks/task_led.h"
+#include "tasks/task_wifi_init.h"
 
 #include "tif/c/hw/pico/pwm_irq_handler.h"
 //=============================================================================
@@ -52,14 +54,6 @@ int main(void)
         NULL,                                   /* Parameter passed into the task. */
         TASK_WIFI_INIT_CONFIG_TASK_PRIO,        /* Priority at which the task is created. */
         NULL );                                 /* Used to pass out the created task's handle. */
-
-    xTaskCreate(
-        taskTemperature,
-        "temperature",
-        TASK_TEMPERATURE_CONFIG_TASK_STACK_SIZE,
-        NULL,
-        TASK_TEMPERATURE_CONFIG_TASK_PRIO,
-        NULL );   
 
     printf("Running FreeRTOS...\n\r");
     vTaskStartScheduler();
