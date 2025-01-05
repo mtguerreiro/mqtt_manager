@@ -24,18 +24,18 @@
 #include <assert.h>
 #include <string.h>
 
-/* POSIX sockets includes. */
-//#include <errno.h>
-//#include <netdb.h>
-//#include <time.h>
-//#include <unistd.h>
-//#include <sys/time.h>
-//#include <arpa/inet.h>
-//#include <sys/socket.h>
-#include "lwip/netif.h"
-#include "lwip/ip4_addr.h"
-#include "lwip/apps/lwiperf.h"
-#include <lwip/sockets.h>
+/* Network */
+#include "lwip/errno.h"
+#include "lwip/netdb.h"
+#include "lwip/inet.h"
+#include "lwip/sockets.h"
+
+//#include "lwip/dhcp.h"
+//#include "lwip/netif.h"
+//#include "lwip/ip6_addr.h"
+//#include "lwip/ip4_addr.h"
+//#include "lwip/apps/lwiperf.h"
+//#include <lwip/sockets.h>
 
 #include "sockets_impl.h"
 
