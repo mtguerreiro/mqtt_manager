@@ -20,8 +20,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef PLAINTEXT_POSIX_H_
-#define PLAINTEXT_POSIX_H_
+#ifndef PLAINTEXT_TRANSPORT_H_
+#define PLAINTEXT_TRANSPORT_H_
 
 /**************************************************/
 /******* DO NOT CHANGE the following order ********/
@@ -57,7 +57,7 @@
 
 /* Transport includes. */
 #include "transport_interface.h"
-#include "sockets_posix.h"
+#include "sockets_impl.h"
 
 /**
  * @brief Parameters for the transport-interface
@@ -133,4 +133,4 @@ int32_t Plaintext_Send( NetworkContext_t * pNetworkContext,
 #endif
 /* *INDENT-ON* */
 
-#endif /* ifndef PLAINTEXT_POSIX_H_ */
+#endif /* ifndef PLAINTEXT_TRANSPORT_H_ */

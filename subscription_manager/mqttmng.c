@@ -27,7 +27,7 @@
 #include "core_mqtt.h"
 
 /* Plaintext sockets transport implementation. */
-#include "plaintext_posix.h"
+#include "plaintext_transport.h"
 #include "transport_interface.h"
 
 /* Clock for timer. */

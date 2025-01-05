@@ -20,8 +20,8 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef SOCKETS_POSIX_H_
-#define SOCKETS_POSIX_H_
+#ifndef SOCKETS_IMPL_H_
+#define SOCKETS_IMPL_H_
 
 /**************************************************/
 /******* DO NOT CHANGE the following order ********/
@@ -113,4 +113,4 @@ SocketStatus_t Sockets_Disconnect( int32_t tcpSocket );
 #endif
 /* *INDENT-ON* */
 
-#endif /* ifndef SOCKETS_POSIX_H_ */
+#endif /* ifndef SOCKETS_IMPL_H_ */

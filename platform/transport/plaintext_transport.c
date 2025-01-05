@@ -29,7 +29,7 @@
 #include <sys/socket.h>
 #include <poll.h>
 
-#include "plaintext_posix.h"
+#include "plaintext_transport.h"
 
 /*-----------------------------------------------------------*/
 

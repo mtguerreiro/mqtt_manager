@@ -6,7 +6,7 @@ target_link_libraries(
     subscription_manager
     PRIVATE
     clock_posix
-    plaintext_posix
+    plaintext_transport
 )
 
 target_include_directories(subscription_manager PRIVATE
