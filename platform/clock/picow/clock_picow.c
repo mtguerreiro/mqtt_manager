@@ -4,6 +4,9 @@
 //#include "time.h"
 #include "pico/stdlib.h"
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 /*-----------------------------------------------------------*/
 
 uint32_t Clock_GetTimeMs( void )
@@ -17,5 +20,6 @@ uint32_t Clock_GetTimeMs( void )
 
 void Clock_SleepMs( uint32_t sleepTimeMs )
 {
-    sleep_ms(sleepTimeMs);
+    vTaskDelay( sleepTimeMs / portTICK_PERIOD_MS );
+    //sleep_ms(sleepTimeMs);
 }

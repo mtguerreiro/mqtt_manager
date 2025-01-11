@@ -9,6 +9,7 @@
 /* Kernel */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 
 /* SVMQTT */
 #include "mqttmng.h"
@@ -25,12 +26,16 @@
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 static int32_t svmqttStatus = 1;
+
+static SemaphoreHandle_t mutex;
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
 static int32_t taskSvqmttInit(void);
+static int32_t taskSvmqttLock(uint32_t timeout);
+static void taskSvmqttUnlock(void);
 //=============================================================================
 
 //=============================================================================
@@ -67,11 +72,28 @@ static int32_t taskSvqmttInit(void){
     
     int32_t status;
 
-    status = mqttmngInit();
+    mutex = xSemaphoreCreateMutex();
+    if( mutex == NULL ) return -1;
+
+    status = mqttmngInit(taskSvmqttLock, taskSvmqttUnlock);
+
  	mqttmngAddComponent(MQTT_MNG_COMP_1, (const char*)"temp1", (const char*)"temperature", (const char*)0);
 	mqttmngAddComponent(MQTT_MNG_COMP_2, (const char*)"led233", (const char*)"led", (const char*)"ri");
 
+
     return status;
+}
+//-----------------------------------------------------------------------------
+static int32_t taskSvmqttLock(uint32_t timeout){
+
+    if( xSemaphoreTake(mutex, timeout) != pdTRUE ) return -1;
+
+    return 0;
+}
+//-----------------------------------------------------------------------------
+static void taskSvmqttUnlock(void){
+    
+    xSemaphoreGive(mutex);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

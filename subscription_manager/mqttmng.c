@@ -91,91 +91,10 @@
  */
 #define CONNECTION_RETRY_BACKOFF_BASE_MS         ( 500U )
 
-
 /**
  * @brief Timeout for receiving CONNACK packet in milli seconds.
  */
 #define CONNACK_RECV_TIMEOUT_MS                 ( 1000U )
-
-/**
- * @brief The MQTT topic filter to subscribe to for temperature data in the demo.
- */
-#define DEMO_TEMPERATURE_TOPIC_FILTER           CLIENT_IDENTIFIER "/demo/temperature/+"
-
-/**
- * @brief The length of the temperature topic filter.
- */
-#define DEMO_TEMPERATURE_TOPIC_FILTER_LENGTH    ( ( uint16_t ) ( sizeof( DEMO_TEMPERATURE_TOPIC_FILTER ) - 1U ) )
-
-/**
- * @brief The MQTT topic for the high temperature data value that the demo will
- * publish to.
- */
-#define DEMO_TEMPERATURE_HIGH_TOPIC             CLIENT_IDENTIFIER "/demo/temperature/high"
-
-/**
- * @brief The length of the high temperature topic name.
- */
-#define DEMO_TEMPERATURE_HIGH_TOPIC_LENGTH      ( ( uint16_t ) ( sizeof( DEMO_TEMPERATURE_HIGH_TOPIC ) - 1U ) )
-
-/**
- * @brief The MQTT topic for the high temperature data value that the demo will
- * publish to.
- */
-#define DEMO_TEMPERATURE_LOW_TOPIC              CLIENT_IDENTIFIER "/demo/temperature/low"
-
-/**
- * @brief The length of the high temperature topic name.
- */
-#define DEMO_TEMPERATURE_LOW_TOPIC_LENGTH       ( ( uint16_t ) ( sizeof( DEMO_TEMPERATURE_LOW_TOPIC ) - 1U ) )
-
-/**
- * @brief The MQTT topic filter to subscribe and publish to for humidity data in the demo.
- *
- * The topic name starts with the client identifier to ensure that each demo
- * interacts with a unique topic name.
- */
-#define DEMO_HUMIDITY_TOPIC                     CLIENT_IDENTIFIER "/demo/humidity"
-
-/**
- * @brief The length of the humidity topic.
- */
-#define DEMO_HUMIDITY_TOPIC_LENGTH              ( ( uint16_t ) ( sizeof( DEMO_HUMIDITY_TOPIC ) - 1U ) )
-
-/**
- * @brief The MQTT topic filter to subscribe and publish to for precipitation data in the demo.
- *
- * The topic name starts with the client identifier to ensure that each demo
- * interacts with a unique topic name.
- */
-#define DEMO_PRECIPITATION_TOPIC                CLIENT_IDENTIFIER "/demo/precipitation"
-
-/**
- * @brief The length of the precipitation topic.
- */
-#define DEMO_PRECIPITATION_TOPIC_LENGTH         ( ( uint16_t ) ( sizeof( DEMO_PRECIPITATION_TOPIC ) - 1U ) )
-
-/**
- * @brief The MQTT message for the #DEMO_TEMPERATURE_HIGH_TOPIC topic published
- * in this example.
- */
-#define DEMO_TEMPERATURE_HIGH_MESSAGE           "Today's High is 80 degree F"
-
-/**
- * @brief The MQTT message for the #DEMO_TEMPERATURE_LOW_TOPIC topic published
- * in this example.
- */
-#define DEMO_TEMPERATURE_LOW_MESSAGE            "Today's Low 52 degree F"
-
-/**
- * @brief The MQTT message for the #DEMO_HUMIDITY_TOPIC topic published in this example.
- */
-#define DEMO_HUMIDITY_MESSAGE                   "Today's humidity at 58%"
-
-/**
- * @brief The MQTT message for the #DEMO_PRECIPITATION_TOPIC_LENGTH topic published in this example.
- */
-#define DEMO_PRECIPITATION_MESSAGE              "Today's precipitation at 9%"
 
 /**
  * @brief Timeout for MQTT_ProcessLoop function in milliseconds.
@@ -262,28 +181,6 @@ static uint16_t lastUnsubscribePacketIdentifier = 0U;
 static uint8_t buffer[ NETWORK_BUFFER_SIZE ];
 
 /**
- * @brief Flag to represent whether that the temperature callback has been invoked with
- * incoming PUBLISH message for high temperature data.
- */
-static bool globalReceivedHighTemperatureData = false;
-
-/**
- * @brief Flag to represent whether that the temperature callback has been invoked with
- * incoming PUBLISH message for low temperature data.
- */
-static bool globalReceivedLowTemperatureData = false;
-
-/**
- * @brief Flag to represent whether that the humidity topic callback has been invoked.
- */
-static bool globalReceivedHumidityData = false;
-
-/**
- * @brief Flag to represent whether that the precipitation topic callback has been invoked.
- */
-static bool globalReceivedPrecipitationData = false;
-
-/**
  * @brief Array to track the outgoing publish records for outgoing publishes
  * with QoS > 0.
  *
@@ -311,6 +208,8 @@ struct NetworkContext
     PlaintextParams_t * pParams;
 };
 
+#define MQTT_MNG_LOCK_TIMEOUT_MS    100
+#define MQTT_MNG_PROC_DELAY_MS      25
 #define MQTT_MNG_SUBS_BUFFER_SIZE   128
 #define MQTT_MNG_WRITE_BUFFER_SIZE  128
 #define MQTT_MNG_READ_BUFFER_SIZE   128
@@ -333,6 +232,9 @@ typedef struct{
     MQTTContext_t mqttContext;
     NetworkContext_t networkContext;
     PlaintextParams_t plaintextParams;
+
+    mqttmngLock_t lock;
+    mqttmngUnlock_t unlock;
 
 }mqttmng_t;
 
@@ -360,6 +262,9 @@ static int mqttmngWaitForPacketAck( MQTTContext_t * pMqttContext,
 static int32_t mqttmngPublishListComponents(void);
 
 static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload);
+
+static int32_t mqttmngLock(uint32_t timeout);
+static void mqttmngUnlock(void);
 //=============================================================================
 
 //=============================================================================
@@ -367,7 +272,8 @@ static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload);
 //=============================================================================
 mqttmng_t mqttmng = {
     .names = {0}, .flags = {0}, .subsbufSize = 0,
-    .mqttContext = {0}, .networkContext = {0}, .plaintextParams = {0}
+    .mqttContext = {0}, .networkContext = {0}, .plaintextParams = {0},
+    .lock = 0, .unlock = 0
     };
 
 //=============================================================================
@@ -376,7 +282,10 @@ mqttmng_t mqttmng = {
 /*-------------------------------- Functions --------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-int32_t mqttmngInit(void){
+int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock){
+
+    mqttmng.lock = lock;
+    mqttmng.unlock = unlock;
 
     mqttmng.networkContext.pParams = &mqttmng.plaintextParams;
 
@@ -426,13 +335,18 @@ int32_t mqttmngInit(void){
 }
 //-----------------------------------------------------------------------------
 void mqttmngRun(void){
-
+    
     mqttmngPublishListComponents();
 
-	while (1)
-	{
+	while( 1 ){
+
+        if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) continue;
+
         MQTT_ProcessLoop( &mqttmng.mqttContext );
-        Clock_SleepMs(1000);
+
+        mqttmngUnlock();
+
+        Clock_SleepMs(MQTT_MNG_PROC_DELAY_MS);
 	}
 }
 //-----------------------------------------------------------------------------
@@ -444,15 +358,15 @@ int32_t mqttmngAddComponent(uint32_t id, const char *name, const char *type, con
     mqttmng.types[id] = type;
     mqttmng.flags[id] = flags;
 
-#if( MQTT_MNG_CONFIG_DBG )
-	printf("%sAdded component %s with type %s and flags [%s]\n", MQTT_MNG_DBF_PREFIX, name, type, flags);
-#endif
+    LogInfo( ("Added component %s with type %s and flags [%s]", name, type, flags) );
 
     return 0;
 }
 //-----------------------------------------------------------------------------
 int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload){
     
+    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) return -1;
+
     int returnStatus = EXIT_SUCCESS;
 
     if( id >= MQTT_MNG_COMP_END ) return -1;
@@ -471,23 +385,20 @@ int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload
 
    if( (len + 1) >= MQTT_MNG_WRITE_BUFFER_SIZE ) return -2;
 
-#if( MQTT_MNG_CONFIG_DBG )
-    printf("%sPublishing to %s\n", MQTT_MNG_DBF_PREFIX, buf);
-    fflush( stdout );
-#endif
+    LogInfo( ("Publishing to %s", buf) );
 
     returnStatus = mqttmngPublishBare(buf, payload);
 
-#if( MQTT_MNG_CONFIG_DBG )
-    printf("%sPublish status %d\n", MQTT_MNG_DBF_PREFIX, returnStatus);
-    fflush( stdout );
-#endif
+    LogInfo( ("Publish status %d", returnStatus) );
+
+    mqttmngUnlock();
 
     return returnStatus;
 }
 //-----------------------------------------------------------------------------
 int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSubscrCb_t callback){
 
+    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) return -1;
 
     if( id >= MQTT_MNG_COMP_END ) return -1;
 
@@ -504,10 +415,7 @@ int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSu
 
     mqttmng.subsbufSize += len + 1;
 
-#if( MQTT_MNG_CONFIG_DBG )
-    printf("%sSubscribing to %s\n", MQTT_MNG_DBF_PREFIX, &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1]);
-    fflush( stdout );
-#endif
+    LogInfo( ("Subscribing to %s", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1]) );
 
     int returnStatus = EXIT_SUCCESS;
     SubscriptionManagerStatus_t managerStatus = ( SubscriptionManagerStatus_t ) 0u;
@@ -544,10 +452,9 @@ int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSu
                                                      len );
     }
 
-#if( MQTT_MNG_CONFIG_DBG )
-    printf("%sSubscription status %d\n", MQTT_MNG_DBF_PREFIX, returnStatus);
-    fflush( stdout );
-#endif
+    mqttmngUnlock();
+
+    LogInfo( ("Subscription status %d", returnStatus) );
 
     return returnStatus;
 }
@@ -560,6 +467,8 @@ int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSu
 //=============================================================================
 //-----------------------------------------------------------------------------
 static int32_t mqttmngPublishListComponents(void){
+
+    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) return -1;
 
     int returnStatus;
     char buf[MQTT_MNG_WRITE_BUFFER_SIZE] = {0};
@@ -581,21 +490,16 @@ static int32_t mqttmngPublishListComponents(void){
 	payload.data = buf;
 	payload.size = strlen(buf);
 	payload.dup = 0;
-	payload.qos = 0;
 	payload.retain = 1;
 
-#if( MQTT_MNG_CONFIG_DBG )
-    printf("%sPublishing components %s to %s\n", MQTT_MNG_DBF_PREFIX, buf, MQTT_MNG_CONFIG_COMPONENTS_TOPIC);
-    fflush( stdout );
-#endif
+    LogInfo( ("Publishing components %s to %s", buf, MQTT_MNG_CONFIG_COMPONENTS_TOPIC) );
 
     returnStatus = mqttmngPublishBare(MQTT_MNG_CONFIG_COMPONENTS_TOPIC, &payload);
 
-#if( MQTT_MNG_CONFIG_DBG )
-    printf("%sPublish status %d\n", MQTT_MNG_DBF_PREFIX, returnStatus);
-    fflush( stdout );
-#endif
+    LogInfo( ("Publish status %d", returnStatus) );
 
+    mqttmngUnlock();
+    
     return returnStatus;
 }
 //-----------------------------------------------------------------------------
@@ -614,11 +518,11 @@ static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload){
 
     if( returnStatus == EXIT_FAILURE )
     {
-        LogError( ( "Unable to find a free spot for outgoing PUBLISH message.\n\n" ) );
+        LogError( ( "Unable to find a free spot for outgoing PUBLISH message." ) );
     }
     else
     {
-        publishInfo.qos = payload->qos;
+        publishInfo.qos = 0;
         publishInfo.pTopicName = topic;
         publishInfo.topicNameLength = strlen(topic);
         publishInfo.pPayload = payload->data;
@@ -642,10 +546,7 @@ static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload){
 
     }
 
-#if( MQTT_MNG_CONFIG_DBG )
-    printf("%sPublish status %d\n", MQTT_MNG_DBF_PREFIX, returnStatus);
-    fflush( stdout );
-#endif
+    LogInfo( ("Publish status %d", returnStatus) );
 
     return returnStatus;
 }
@@ -675,7 +576,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
         switch( pPacketInfo->type )
         {
             case MQTT_PACKET_TYPE_SUBACK:
-                LogInfo( ( "Received SUBACK.\n\n" ) );
+                LogInfo( ( "Received SUBACK." ) );
                 /* Make sure ACK packet identifier matches with Request packet identifier. */
                 assert( lastSubscribePacketIdentifier == pDeserializedInfo->packetIdentifier );
 
@@ -684,7 +585,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
                 break;
 
             case MQTT_PACKET_TYPE_UNSUBACK:
-                LogInfo( ( "Received UNSUBACK.\n\n" ) );
+                LogInfo( ( "Received UNSUBACK." ) );
                 /* Make sure ACK packet identifier matches with Request packet identifier. */
                 assert( lastUnsubscribePacketIdentifier == pDeserializedInfo->packetIdentifier );
 
@@ -697,11 +598,11 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
                 /* Nothing to be done from application as library handles
                  * PINGRESP. */
                 LogWarn( ( "PINGRESP should not be handled by the application "
-                           "callback when using MQTT_ProcessLoop.\n\n" ) );
+                           "callback when using MQTT_ProcessLoop." ) );
                 break;
 
             case MQTT_PACKET_TYPE_PUBACK:
-                LogInfo( ( "PUBACK received for packet id %u.\n\n",
+                LogInfo( ( "PUBACK received for packet id %u.",
                            pDeserializedInfo->packetIdentifier ) );
 
                 /* Update the global ACK packet identifier. */
@@ -710,7 +611,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
 
             /* Any other packet type is invalid. */
             default:
-                LogError( ( "Unknown packet type received:(%02x).\n\n",
+                LogError( ( "Unknown packet type received:(%02x).",
                             pPacketInfo->type ) );
         }
     }
@@ -807,7 +708,7 @@ static int mqttmngEstablishMqttSession( MQTTContext_t * pMqttContext,
             }
             else
             {
-                LogInfo( ( "MQTT connection successfully established with broker.\n\n" ) );
+                LogInfo( ( "MQTT connection successfully established with broker." ) );
             }
         }
     }
@@ -850,7 +751,7 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
     }
     else
     {
-        LogInfo( ( "SUBSCRIBE sent for topic %.*s to broker.\n\n",
+        LogInfo( ( "SUBSCRIBE sent for topic %.*s to broker.",
                    topicFilterLength,
                    pTopicFilter ) );
 
@@ -908,6 +809,23 @@ static int mqttmngWaitForPacketAck( MQTTContext_t * pMqttContext,
     }
 
     return returnStatus;
+}
+//-----------------------------------------------------------------------------
+static int32_t mqttmngLock(uint32_t timeout){
+
+    if( mqttmng.lock == 0 ) return 0;
+
+    if( mqttmng.lock(timeout) != 0 ){
+        LogInfo( ("Failed to take lock") );
+        return -1;
+    }
+
+    return 0;
+}
+//-----------------------------------------------------------------------------
+static void mqttmngUnlock(void){
+
+    if( mqttmng.unlock != 0 ) mqttmng.unlock();
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

@@ -116,7 +116,6 @@ static void taskTemperatureUpdateMqtt(uint16_t temp){
     payload.data = (void *)&temp;
     payload.size = 2;
     payload.dup = 0;
-    payload.qos = 0;
     payload.retain = 0;
 
     mqttmngPublish(MQTT_MNG_COMP_1, "temperature", &payload);

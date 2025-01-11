@@ -69,8 +69,6 @@ void taskWifiInit(void *param){
         TASK_BLINK_CONFIG_TASK_PRIO,
         NULL );
 
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-
     xTaskCreate(
         taskTemperature,
         "temperature",
@@ -78,8 +76,6 @@ void taskWifiInit(void *param){
         NULL,
         TASK_TEMPERATURE_CONFIG_TASK_PRIO,
         NULL );
-
-    vTaskDelay(650 / portTICK_PERIOD_MS);
 
     xTaskCreate(
         taskLed,
@@ -100,6 +96,8 @@ void taskWifiInit(void *param){
 //-----------------------------------------------------------------------------
 static int taskWifiInitHwInit(void){
     
+    int status;
+
     if (cyw43_arch_init())
     {
         printf("Failed to initialize cyw43 arch \n");
@@ -109,10 +107,12 @@ static int taskWifiInitHwInit(void){
     cyw43_arch_enable_sta_mode();
  
     printf("Connecting to WiFi...\n\r");
- 
-    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000))
-    {
-        printf("Failed to connect.\n\r");
+    
+    status = cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000);
+    if ( status != 0 )
+    {   
+        printf("Failed to connect. Status %d\n\r", status);
+        while(1);
         return -1;
     }
 

@@ -9,6 +9,7 @@ target_include_directories(
 
 target_link_libraries(clock PRIVATE
     pico_stdlib
+    FreeRTOS-Kernel FreeRTOS-Kernel-Heap4
 )
 
 

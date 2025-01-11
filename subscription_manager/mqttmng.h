@@ -15,6 +15,8 @@
 //=============================================================================
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
+typedef int32_t (*mqttmngLock_t)(uint32_t timeout);
+typedef void (*mqttmngUnlock_t)(void);
 
 #define MQTT_MNG_COMPONENT_STR(comp) 
 
@@ -22,7 +24,6 @@ typedef SubscriptionManagerCallback_t mqttmngSubscrCb_t;
 
 typedef struct 
 {
-    uint8_t qos;
     uint8_t retain;
     uint8_t dup;
     const void * data;
@@ -35,7 +36,7 @@ typedef struct
 /*-------------------------------- Functions --------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-int32_t mqttmngInit(void);
+int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock);
 //-----------------------------------------------------------------------------
 void mqttmngRun(void);
 //-----------------------------------------------------------------------------

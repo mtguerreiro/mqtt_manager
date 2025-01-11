@@ -26,7 +26,7 @@ static void precipitationDataCallback( MQTTContext_t * pContext,
 int main(int argc, char** argv)
 {
 
-	mqttmngInit();
+	mqttmngInit(0, 0);
  	mqttmngAddComponent(MQTT_MNG_COMP_1, (const char*)"temp1", (const char*)"temperature", (const char*)0);
 	mqttmngAddComponent(MQTT_MNG_COMP_2, (const char*)"led233", (const char*)"led", (const char*)"ri");
 
@@ -34,7 +34,6 @@ int main(int argc, char** argv)
 	payload.data = "25";
 	payload.size = strlen(payload.data);
 	payload.dup = 0;
-	payload.qos = 0;
 	payload.retain = 0;
 
 	mqttmngPublish(MQTT_MNG_COMP_1, "temperature", &payload);
