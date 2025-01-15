@@ -9,6 +9,7 @@
 #include "task.h"
 
 /* Device and drivers */
+#include "cyw43.h"
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 
@@ -32,13 +33,14 @@
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-
+static volatile int wifistatus = 1;
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
 static int taskWifiInitHwInit(void);
+static void taskWifiUpdateStatus(void);
 //=============================================================================
 
 //=============================================================================
@@ -53,13 +55,13 @@ void taskWifiInit(void *param){
 
     printf("Wifi initialized.\n\r");
 
-    xTaskCreate(
-        taskSvmqtt,
-        "svmqtt",
-        TASKS_SVMQTT_CONFIG_TASK_STACK_SIZE,
-        NULL,
-        TASKS_SVMQTT_CONFIG_TASK_PRIO,
-        NULL );
+    // xTaskCreate(
+    //     taskSvmqtt,
+    //     "svmqtt",
+    //     TASKS_SVMQTT_CONFIG_TASK_STACK_SIZE,
+    //     NULL,
+    //     TASKS_SVMQTT_CONFIG_TASK_PRIO,
+    //     NULL );
 
     xTaskCreate(
         taskBlink,
@@ -69,23 +71,32 @@ void taskWifiInit(void *param){
         TASK_BLINK_CONFIG_TASK_PRIO,
         NULL );
 
-    xTaskCreate(
-        taskTemperature,
-        "temperature",
-        TASK_TEMPERATURE_CONFIG_TASK_STACK_SIZE,
-        NULL,
-        TASK_TEMPERATURE_CONFIG_TASK_PRIO,
-        NULL );
+    // xTaskCreate(
+    //     taskTemperature,
+    //     "temperature",
+    //     TASK_TEMPERATURE_CONFIG_TASK_STACK_SIZE,
+    //     NULL,
+    //     TASK_TEMPERATURE_CONFIG_TASK_PRIO,
+    //     NULL );
 
-    xTaskCreate(
-        taskLed,
-        "led",
-        TASK_LED_CONFIG_TASK_STACK_SIZE,
-        NULL,
-        TASK_LED_CONFIG_TASK_PRIO,
-        NULL );   
+    // xTaskCreate(
+    //     taskLed,
+    //     "led",
+    //     TASK_LED_CONFIG_TASK_STACK_SIZE,
+    //     NULL,
+    //     TASK_LED_CONFIG_TASK_PRIO,
+    //     NULL );   
 
-    vTaskDelete(NULL);
+    while(1){
+        taskWifiUpdateStatus();
+        vTaskDelay(250 / portTICK_PERIOD_MS);
+    }
+
+}
+//-----------------------------------------------------------------------------
+int taskWifiGetStatus(void){
+    
+    return wifistatus;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -119,6 +130,15 @@ static int taskWifiInitHwInit(void){
     printf("Connected.\n\r");
 
     return 0;
+}
+//-----------------------------------------------------------------------------
+static void taskWifiUpdateStatus(void){
+    
+    int status;
+    status = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
+
+    if( status != 1 ) wifistatus = 1;
+    else wifistatus = 0;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

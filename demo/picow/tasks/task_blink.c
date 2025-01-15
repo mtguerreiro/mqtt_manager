@@ -12,6 +12,7 @@
 #include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
 
+#include "task_wifi_init.h"
 //=============================================================================
 
 //=============================================================================
@@ -39,6 +40,7 @@ blinkControl_t xblinkControl;
 //=============================================================================
 static void taskBlinkInitialize(void);
 static int32_t taskBlinkPeriodUpdate(void *in, uint32_t insize, void **out, uint32_t maxoutsize);
+static void taskBlinkCheckWifi(void);
 static void taskBlinkToggle(void);
 //=============================================================================
 
@@ -51,6 +53,7 @@ void taskBlink(void *param){
     taskBlinkInitialize();
 
     while(1){
+        taskBlinkCheckWifi();
     	taskBlinkToggle();
         vTaskDelay(xblinkControl.period);
     }
@@ -77,6 +80,16 @@ static int32_t taskBlinkPeriodUpdate(void *in, uint32_t insize, void **out, uint
 	xblinkControl.period = period / portTICK_PERIOD_MS;
 
     return 0;
+}
+//-----------------------------------------------------------------------------
+static void taskBlinkCheckWifi(void){
+
+    int status;
+
+    status = taskWifiGetStatus();
+
+    if( status == 0 ) xblinkControl.period = 1000 / portTICK_PERIOD_MS;
+    else xblinkControl.period = 250 / portTICK_PERIOD_MS;
 }
 //-----------------------------------------------------------------------------
 static void taskBlinkToggle(void){

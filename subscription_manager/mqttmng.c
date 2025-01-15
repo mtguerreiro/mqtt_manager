@@ -243,12 +243,13 @@ typedef struct{
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
+static int mqttmngSocketConnect(void);
+static int mqttmngEstablishMqttSession(void);
+
 static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
                                   MQTTPacketInfo_t * pPacketInfo,
                                   MQTTDeserializedInfo_t * pDeserializedInfo );
 
-static int mqttmngEstablishMqttSession( MQTTContext_t * pMqttContext,
-                                        NetworkContext_t * pNetworkContext );
 
 static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext, 
                                     const char * pTopicFilter, 
@@ -284,52 +285,17 @@ mqttmng_t mqttmng = {
 //-----------------------------------------------------------------------------
 int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock){
 
+    int status; 
+
     mqttmng.lock = lock;
     mqttmng.unlock = unlock;
 
-    mqttmng.networkContext.pParams = &mqttmng.plaintextParams;
-
-    NetworkContext_t * pNetworkContext = &mqttmng.networkContext;
-    MQTTContext_t * pMqttContext = &mqttmng.mqttContext;
-
-    int returnStatus = EXIT_FAILURE;
-    SocketStatus_t socketStatus = SOCKETS_SUCCESS;
-    ServerInfo_t serverInfo;
-
-    /* Initialize information to connect to the MQTT broker. */
-    serverInfo.pHostName = BROKER_ENDPOINT;
-    serverInfo.hostNameLength = BROKER_ENDPOINT_LENGTH;
-    serverInfo.port = BROKER_PORT;
-
-    /* Establish a TCP connection with the MQTT broker. This example connects
-     * to the MQTT broker as specified in BROKER_ENDPOINT and BROKER_PORT
-     * at the demo config header. */
-    LogInfo( ( "Creating a TCP connection to %.*s:%d.",
-                BROKER_ENDPOINT_LENGTH,
-                BROKER_ENDPOINT,
-                BROKER_PORT ) );
-    socketStatus = Plaintext_Connect( pNetworkContext,
-                                        &serverInfo,
-                                        TRANSPORT_SEND_RECV_TIMEOUT_MS,
-                                        TRANSPORT_SEND_RECV_TIMEOUT_MS );
-
-    if( socketStatus != SOCKETS_SUCCESS ) return -1;
+    /* Initializes network context and connects to broker (server) */
+    status = mqttmngSocketConnect();
+    if( status != 0 ) return status;
 
     /* Establish MQTT session on top of TCP connection. */
-    LogInfo( ( "Creating an MQTT connection to %.*s.",
-                BROKER_ENDPOINT_LENGTH,
-                BROKER_ENDPOINT ) );
-
-    /* Sends an MQTT Connect packet over the already connected TCP socket
-        * tcpSocket, and waits for connection acknowledgment (CONNACK) packet. */
-    returnStatus = mqttmngEstablishMqttSession( pMqttContext, pNetworkContext );
-
-    if( returnStatus == EXIT_FAILURE )
-    {
-        /* Close the TCP connection.  */
-        ( void ) Plaintext_Disconnect( pNetworkContext );
-        return -2;
-    }
+    status = mqttmngEstablishMqttSession();
 
     return 0;
 }
@@ -364,10 +330,10 @@ int32_t mqttmngAddComponent(uint32_t id, const char *name, const char *type, con
 }
 //-----------------------------------------------------------------------------
 int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload){
-    
-    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) return -1;
 
-    int returnStatus = EXIT_SUCCESS;
+    int status;
+
+    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) return -1;
 
     if( id >= MQTT_MNG_COMP_END ) return -1;
 
@@ -383,17 +349,15 @@ int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload
         topic        
     );
 
-   if( (len + 1) >= MQTT_MNG_WRITE_BUFFER_SIZE ) return -2;
+    if( (len + 1) >= MQTT_MNG_WRITE_BUFFER_SIZE ) return -1;
 
-    LogInfo( ("Publishing to %s", buf) );
-
-    returnStatus = mqttmngPublishBare(buf, payload);
-
-    LogInfo( ("Publish status %d", returnStatus) );
+    status = mqttmngPublishBare(buf, payload);
 
     mqttmngUnlock();
 
-    return returnStatus;
+    if( status != 0 ) return -1;
+
+    return 0;
 }
 //-----------------------------------------------------------------------------
 int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSubscrCb_t callback){
@@ -466,6 +430,119 @@ int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSu
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
+static int mqttmngSocketConnect(void){
+
+    mqttmng.networkContext.pParams = &mqttmng.plaintextParams;
+
+    NetworkContext_t * pNetworkContext = &mqttmng.networkContext;
+
+    SocketStatus_t socketStatus = SOCKETS_SUCCESS;
+    ServerInfo_t serverInfo;
+
+    /* Initialize information to connect to the MQTT broker. */
+    serverInfo.pHostName = BROKER_ENDPOINT;
+    serverInfo.hostNameLength = BROKER_ENDPOINT_LENGTH;
+    serverInfo.port = BROKER_PORT;
+
+    LogInfo( ( "Creating a TCP connection to %.*s:%d.",
+                BROKER_ENDPOINT_LENGTH,
+                BROKER_ENDPOINT,
+                BROKER_PORT ) );
+
+    socketStatus = Plaintext_Connect( pNetworkContext,
+                                        &serverInfo,
+                                        TRANSPORT_SEND_RECV_TIMEOUT_MS,
+                                        TRANSPORT_SEND_RECV_TIMEOUT_MS );
+
+    if( socketStatus != SOCKETS_SUCCESS ){
+        LogError( ( "Failed to create connection to %.*s:%d. Error code: %d",
+                    BROKER_ENDPOINT_LENGTH,
+                    BROKER_ENDPOINT,
+                    BROKER_PORT,
+                    socketStatus ) );
+        return -1;
+    }
+
+    LogInfo( ( "Connection established." ) );
+
+    return 0;
+}
+//-----------------------------------------------------------------------------
+static int mqttmngEstablishMqttSession(void){
+
+    NetworkContext_t * pNetworkContext = &mqttmng.networkContext;
+    MQTTContext_t * pMqttContext = &mqttmng.mqttContext;
+
+    MQTTStatus_t mqttStatus;
+    MQTTConnectInfo_t connectInfo;
+    bool sessionPresent;
+    MQTTFixedBuffer_t networkBuffer;
+    TransportInterface_t transport = { NULL };
+
+    transport.pNetworkContext = pNetworkContext;
+    transport.send = Plaintext_Send;
+    transport.recv = Plaintext_Recv;
+    transport.writev = NULL;
+
+    networkBuffer.pBuffer = buffer;
+    networkBuffer.size = NETWORK_BUFFER_SIZE;
+
+    /* Initialize MQTT library. */
+    mqttStatus = MQTT_Init( pMqttContext,
+                            &transport,
+                            Clock_GetTimeMs,
+                            mqttmngEventCallback,
+                            &networkBuffer );
+
+    if( mqttStatus != MQTTSuccess ){
+        LogError( ( "MQTT_Init failed: Status = %s.", MQTT_Status_strerror( mqttStatus ) ) );
+        return -1;
+    }
+
+    mqttStatus = MQTT_InitStatefulQoS( pMqttContext,
+                                       pOutgoingPublishRecords,
+                                       OUTGOING_PUBLISH_RECORD_LEN,
+                                       pIncomingPublishRecords,
+                                       INCOMING_PUBLISH_RECORD_LEN );
+
+    if( mqttStatus != MQTTSuccess ){
+        LogError( ( "MQTT_InitStatefulQoS failed: Status = %s.", MQTT_Status_strerror( mqttStatus ) ) );
+        return -1;
+    }
+
+    connectInfo.cleanSession = true;
+
+    connectInfo.pClientIdentifier = CLIENT_IDENTIFIER;
+    connectInfo.clientIdentifierLength = CLIENT_IDENTIFIER_LENGTH;
+
+    connectInfo.keepAliveSeconds = MQTT_KEEP_ALIVE_INTERVAL_SECONDS;
+
+    connectInfo.pUserName = NULL;
+    connectInfo.userNameLength = 0U;
+    connectInfo.pPassword = NULL;
+    connectInfo.passwordLength = 0U;
+
+    LogInfo( ( "Creating an MQTT connection to %.*s.",
+                BROKER_ENDPOINT_LENGTH,
+                BROKER_ENDPOINT ) );
+
+    /* Establish MQTT session by sending a CONNECT packet. */
+    mqttStatus = MQTT_Connect( pMqttContext, &connectInfo, NULL, CONNACK_RECV_TIMEOUT_MS, &sessionPresent );
+
+    if( mqttStatus != MQTTSuccess ){
+        LogError( ( "Connection with MQTT broker failed with status %s.",
+                    MQTT_Status_strerror( mqttStatus ) ) );
+
+        /* Close the TCP connection.  */
+        ( void ) Plaintext_Disconnect( &mqttmng.networkContext );
+        return -1;
+    }
+
+    LogInfo( ( "MQTT connection successfully established with broker." ) );
+
+    return 0;
+}
+//-----------------------------------------------------------------------------
 static int32_t mqttmngPublishListComponents(void){
 
     if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) return -1;
@@ -505,59 +582,48 @@ static int32_t mqttmngPublishListComponents(void){
 //-----------------------------------------------------------------------------
 static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload){
 
-    int returnStatus = EXIT_SUCCESS;
-
     MQTTStatus_t mqttStatus = MQTTSuccess;
     MQTTPublishInfo_t publishInfo;
     uint16_t pubPacketId = MQTT_PACKET_ID_INVALID;
     MQTTContext_t * pMqttContext = &mqttmng.mqttContext;
 
-    assert( pMqttContext != NULL );
-
     ( void ) memset( &publishInfo, 0x00, sizeof( MQTTPublishInfo_t ) );
 
-    if( returnStatus == EXIT_FAILURE )
-    {
-        LogError( ( "Unable to find a free spot for outgoing PUBLISH message." ) );
-    }
-    else
-    {
-        publishInfo.qos = 0;
-        publishInfo.pTopicName = topic;
-        publishInfo.topicNameLength = strlen(topic);
-        publishInfo.pPayload = payload->data;
-        publishInfo.payloadLength = payload->size;
-        publishInfo.retain = payload->retain;
+    publishInfo.qos = 0;
+    publishInfo.pTopicName = topic;
+    publishInfo.topicNameLength = strlen(topic);
+    publishInfo.pPayload = payload->data;
+    publishInfo.payloadLength = payload->size;
+    publishInfo.retain = payload->retain;
 
-        /* Get a new packet ID for the publish. */
-        pubPacketId = MQTT_GetPacketId( pMqttContext );
+    /* Get a new packet ID for the publish. */
+    pubPacketId = MQTT_GetPacketId( pMqttContext );
 
-        /* Send PUBLISH packet. */
-        mqttStatus = MQTT_Publish( pMqttContext,
-                                   &publishInfo,
-                                   pubPacketId );
+    LogInfo( ("Publishing to %s", topic) );
 
-        if( mqttStatus != MQTTSuccess )
-        {
-            LogError( ( "Failed to send PUBLISH packet to broker with error = %u.",
-                        mqttStatus ) );
-            returnStatus = EXIT_FAILURE;
-        }
+    /* Send PUBLISH packet. */
+    mqttStatus = MQTT_Publish( pMqttContext,
+                                &publishInfo,
+                                pubPacketId );
 
+    if( mqttStatus != MQTTSuccess ){
+        LogError( ( "Failed to send PUBLISH packet to broker with error = %u.",
+                    mqttStatus ) );
+        return -1;
     }
 
-    LogInfo( ("Publish status %d", returnStatus) );
+    LogInfo( ("Publish status %d", mqttStatus) );
 
-    return returnStatus;
+    return 0;
 }
 //-----------------------------------------------------------------------------
 static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
                                   MQTTPacketInfo_t * pPacketInfo,
                                   MQTTDeserializedInfo_t * pDeserializedInfo )
 {
-    assert( pMqttContext != NULL );
-    assert( pPacketInfo != NULL );
-    assert( pDeserializedInfo != NULL );
+    //assert( pMqttContext != NULL );
+    //assert( pPacketInfo != NULL );
+    //assert( pDeserializedInfo != NULL );
     //assert( pDeserializedInfo->packetIdentifier != MQTT_PACKET_ID_INVALID );
 
     LogInfo( ("Packet id: %d", pDeserializedInfo->packetIdentifier) );
@@ -566,7 +632,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
      * out the lower bits to check if the packet is publish. */
     if( ( pPacketInfo->type & 0xF0U ) == MQTT_PACKET_TYPE_PUBLISH )
     {
-        assert( pDeserializedInfo->pPublishInfo != NULL );
+        //assert( pDeserializedInfo->pPublishInfo != NULL );
         /* Handle incoming publish. */
         SubscriptionManager_DispatchHandler( pMqttContext, pDeserializedInfo->pPublishInfo );
     }
@@ -578,7 +644,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
             case MQTT_PACKET_TYPE_SUBACK:
                 LogInfo( ( "Received SUBACK." ) );
                 /* Make sure ACK packet identifier matches with Request packet identifier. */
-                assert( lastSubscribePacketIdentifier == pDeserializedInfo->packetIdentifier );
+                //assert( lastSubscribePacketIdentifier == pDeserializedInfo->packetIdentifier );
 
                 /* Update the global ACK packet identifier. */
                 globalAckPacketIdentifier = pDeserializedInfo->packetIdentifier;
@@ -587,7 +653,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
             case MQTT_PACKET_TYPE_UNSUBACK:
                 LogInfo( ( "Received UNSUBACK." ) );
                 /* Make sure ACK packet identifier matches with Request packet identifier. */
-                assert( lastUnsubscribePacketIdentifier == pDeserializedInfo->packetIdentifier );
+                //assert( lastUnsubscribePacketIdentifier == pDeserializedInfo->packetIdentifier );
 
                 /* Update the global ACK packet identifier. */
                 globalAckPacketIdentifier = pDeserializedInfo->packetIdentifier;
@@ -616,105 +682,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
         }
     }
 }
-//-----------------------------------------------------------------------------
-static int mqttmngEstablishMqttSession( MQTTContext_t * pMqttContext,
-                                        NetworkContext_t * pNetworkContext )
-{
-    int returnStatus = EXIT_SUCCESS;
-    MQTTStatus_t mqttStatus;
-    MQTTConnectInfo_t connectInfo;
-    bool sessionPresent;
-    MQTTFixedBuffer_t networkBuffer;
-    TransportInterface_t transport = { NULL };
 
-    assert( pMqttContext != NULL );
-    assert( pNetworkContext != NULL );
-
-    /* Fill in TransportInterface send and receive function pointers.
-     * For this demo, TCP sockets are used to send and receive data
-     * from network. Network context is socket file descriptor.*/
-    transport.pNetworkContext = pNetworkContext;
-    transport.send = Plaintext_Send;
-    transport.recv = Plaintext_Recv;
-    transport.writev = NULL;
-
-    /* Fill the values for network buffer. */
-    networkBuffer.pBuffer = buffer;
-    networkBuffer.size = NETWORK_BUFFER_SIZE;
-
-    /* Initialize MQTT library. */
-    mqttStatus = MQTT_Init( pMqttContext,
-                            &transport,
-                            Clock_GetTimeMs,
-                            mqttmngEventCallback,
-                            &networkBuffer );
-
-    if( mqttStatus != MQTTSuccess )
-    {
-        returnStatus = EXIT_FAILURE;
-        LogError( ( "MQTT_Init failed: Status = %s.", MQTT_Status_strerror( mqttStatus ) ) );
-    }
-    else
-    {
-        mqttStatus = MQTT_InitStatefulQoS( pMqttContext,
-                                           pOutgoingPublishRecords,
-                                           OUTGOING_PUBLISH_RECORD_LEN,
-                                           pIncomingPublishRecords,
-                                           INCOMING_PUBLISH_RECORD_LEN );
-
-        if( mqttStatus != MQTTSuccess )
-        {
-            returnStatus = EXIT_FAILURE;
-            LogError( ( "MQTT_InitStatefulQoS failed: Status = %s.", MQTT_Status_strerror( mqttStatus ) ) );
-        }
-        else
-        {
-            /* Establish MQTT session by sending a CONNECT packet. */
-
-            /* Start with a clean session i.e. direct the MQTT broker to discard any
-             * previous session data. Also, establishing a connection with clean session
-             * will ensure that the broker does not store any data when this client
-             * gets disconnected. */
-            connectInfo.cleanSession = true;
-
-            /* The client identifier is used to uniquely identify this MQTT client to
-             * the MQTT broker. In a production device the identifier can be something
-             * unique, such as a device serial number. */
-            connectInfo.pClientIdentifier = CLIENT_IDENTIFIER;
-            connectInfo.clientIdentifierLength = CLIENT_IDENTIFIER_LENGTH;
-
-            /* The maximum time interval in seconds which is allowed to elapse
-             * between two Control Packets.
-             * It is the responsibility of the Client to ensure that the interval between
-             * Control Packets being sent does not exceed the this Keep Alive value. In the
-             * absence of sending any other Control Packets, the Client MUST send a
-             * PINGREQ Packet. */
-            connectInfo.keepAliveSeconds = MQTT_KEEP_ALIVE_INTERVAL_SECONDS;
-
-            /* Username and password for authentication. Not used in this demo. */
-            connectInfo.pUserName = NULL;
-            connectInfo.userNameLength = 0U;
-            connectInfo.pPassword = NULL;
-            connectInfo.passwordLength = 0U;
-
-            /* Send MQTT CONNECT packet to broker. */
-            mqttStatus = MQTT_Connect( pMqttContext, &connectInfo, NULL, CONNACK_RECV_TIMEOUT_MS, &sessionPresent );
-
-            if( mqttStatus != MQTTSuccess )
-            {
-                returnStatus = EXIT_FAILURE;
-                LogError( ( "Connection with MQTT broker failed with status %s.",
-                            MQTT_Status_strerror( mqttStatus ) ) );
-            }
-            else
-            {
-                LogInfo( ( "MQTT connection successfully established with broker." ) );
-            }
-        }
-    }
-
-    return returnStatus;
-}
 //-----------------------------------------------------------------------------
 static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
                                     const char * pTopicFilter,
@@ -725,7 +693,7 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
     MQTTStatus_t mqttStatus;
     MQTTSubscribeInfo_t pSubscriptionList[ 1 ];
 
-    assert( pMqttContext != NULL );
+    //assert( pMqttContext != NULL );
 
     /* Start with everything at 0. */
     ( void ) memset( ( void * ) pSubscriptionList, 0x00, sizeof( pSubscriptionList ) );
