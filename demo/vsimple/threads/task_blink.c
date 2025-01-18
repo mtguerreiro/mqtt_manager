@@ -1,76 +1,46 @@
 
-
 //=============================================================================
 /*-------------------------------- Includes ---------------------------------*/
 //=============================================================================
-#include <stdio.h>
-#include "stdlib.h"
+#include "task_blink.h"
 
-#include "mqttmng.h"
+#include "stdio.h"
+#include "stddef.h"
+#include "time.h"
+
 #include "mqttmngConfig.h"
-
-#include <pthread.h>
-
-#include "threads/task_blink.h"
-#include "threads/task_svmqtt.h"
-#include "threads/task_temperature.h"
-#include "threads/task_led.h"
 //=============================================================================
 
 //=============================================================================
-/*-------------------------------- Prototypes -------------------------------*/
+/*--------------------------------- Defines ---------------------------------*/
 //=============================================================================
-
+#define TASK_BLINK_CONFIG_PERIOD_MS    (3000)
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-
+static struct timespec t;
 //=============================================================================
 
 //=============================================================================
-/*----------------------------------- Main ----------------------------------*/
+/*-------------------------------- Prototypes -------------------------------*/
+//=============================================================================
+static void taskBlinkInitialize(void);
+//=============================================================================
+
+//=============================================================================
+/*---------------------------------- Task -----------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-int main(int argc, char** argv){
+void* taskBlink(void *param){
 
-	pthread_t taskBlinkHandle;
-	pthread_t taskSvmqttHandle;
-	pthread_t taskTemperatureHandle;
-	pthread_t taskLedHandle;	
+    taskBlinkInitialize();
 
-    pthread_create( &taskBlinkHandle, NULL, taskBlink, NULL );
-    pthread_create( &taskSvmqttHandle, NULL, taskSvmqtt, NULL );
-    pthread_create( &taskTemperatureHandle, NULL, taskTemperature, NULL );
-    pthread_create( &taskLedHandle, NULL, taskLed, NULL );
-
-    pthread_join( taskBlinkHandle, NULL );
-    pthread_join( taskSvmqttHandle, NULL );
-    pthread_join( taskTemperatureHandle, NULL );
-    pthread_join( taskLedHandle, NULL );
-
-	exit( 0 );
-
-	// int id;
-
-	// mqttmngInit(0, 0);
- 	// mqttmngAddComponent(MQTT_MNG_COMP_1, (const char*)"temp1", (const char*)"temperature", (const char*)0);
-	// mqttmngAddComponent(MQTT_MNG_COMP_2, (const char*)"led233", (const char*)"led", (const char*)"ri");
-
-	// mqttmngPayload_t payload;
-	// payload.data = "25";
-	// payload.size = strlen(payload.data);
-	// payload.dup = 0;
-	// payload.retain = 0;
-
-	// mqttmngPublish(MQTT_MNG_COMP_1, "temperature", &payload);
-
-	// mqttmngSubscribe(MQTT_MNG_COMP_2, "intensity", precipitationDataCallback);
-
-	// mqttmngRun();
-
-	return 0;
+    while(1){
+        nanosleep(&t, NULL);
+        LogInfo( ("Blink") );
+    }
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -79,6 +49,12 @@ int main(int argc, char** argv){
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
+static void taskBlinkInitialize(void){
 
+    t.tv_sec = (TASK_BLINK_CONFIG_PERIOD_MS) / 1000;
+    t.tv_nsec = (TASK_BLINK_CONFIG_PERIOD_MS) * 1000000U - t.tv_sec * 1000000000U;
+
+    LogInfo( ("Running blink task with. Timespec: %lu (s), %lu (ns).", t.tv_sec, t.tv_nsec) );
+}
 //-----------------------------------------------------------------------------
 //=============================================================================

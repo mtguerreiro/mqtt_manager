@@ -208,14 +208,13 @@ struct NetworkContext
     PlaintextParams_t * pParams;
 };
 
-#define MQTT_MNG_LOCK_TIMEOUT_MS    100
-#define MQTT_MNG_PROC_DELAY_MS      100
+#define MQTT_MNG_LOCK_TIMEOUT_MS    2000
+#define MQTT_MNG_PROC_DELAY_MS      10
 #define MQTT_MNG_SUBS_BUFFER_SIZE   128
 #define MQTT_MNG_WRITE_BUFFER_SIZE  128
 #define MQTT_MNG_READ_BUFFER_SIZE   128
 #define MQTT_MNG_DEV_ID_LEN         strlen(MQTT_MNG_CONFIG_DEV_ID)
 
-#define MQTT_MNG_DBF_PREFIX         "mqttmng - "
 
 typedef struct{
 
@@ -236,6 +235,7 @@ typedef struct{
     mqttmngLock_t lock;
     mqttmngUnlock_t unlock;
 
+    int32_t packetsAwaitingAck[OUTGOING_PUBLISH_RECORD_LEN];
 }mqttmng_t;
 
 //=============================================================================
@@ -266,15 +266,19 @@ static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload);
 
 static int32_t mqttmngLock(uint32_t timeout);
 static void mqttmngUnlock(void);
+
+static void mqttmngAddPacketIdToList(uint16_t id);
+static void mqttmngRemovePacketIdToList(uint16_t id);
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-mqttmng_t mqttmng = {
+
+static mqttmng_t mqttmng = {
     .names = {0}, .flags = {0}, .subsbufSize = 0,
     .mqttContext = {0}, .networkContext = {0}, .plaintextParams = {0},
-    .lock = 0, .unlock = 0
+    .lock = 0, .unlock = 0,
     };
 
 //=============================================================================
@@ -296,6 +300,7 @@ int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock){
 
     /* Establish MQTT session on top of TCP connection. */
     status = mqttmngEstablishMqttSession();
+    if( status != 0 ) return status;
 
     return 0;
 }
@@ -333,9 +338,14 @@ int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload
 
     int status;
 
-    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) return -1;
-
     if( id >= MQTT_MNG_COMP_END ) return -1;
+
+    LogInfo( ("Publishing to %s...", topic) );
+
+    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ){
+        LogError( ("Failed to obtain lock when trying to publish to %s.", topic) );
+        return -1;
+    }
 
     char buf[MQTT_MNG_WRITE_BUFFER_SIZE] = {0};
     uint32_t len;
@@ -355,16 +365,23 @@ int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload
 
     mqttmngUnlock();
 
+    LogInfo( ("Publish status: %d.", status) );
+
     if( status != 0 ) return -1;
 
     return 0;
 }
 //-----------------------------------------------------------------------------
-int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSubscrCb_t callback){
-
-    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) return -1;
+int32_t mqttmngSubscribe(uint32_t id, const char *topic, mqttmngSubscrCb_t callback){
 
     if( id >= MQTT_MNG_COMP_END ) return -1;
+
+    LogInfo( ("Subscribing to %s...", topic) );
+
+    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ){
+        LogError( ("Failed to obtain lock when trying to subscribe to %s.", topic) );
+        return -1;
+    }
 
     uint32_t len;
 
@@ -375,11 +392,15 @@ int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSu
         mqttmng.names[id], 
         topic);
 
-    if( (len + 1) >= (MQTT_MNG_SUBS_BUFFER_SIZE - mqttmng.subsbufSize) ) return -2;
+    if( (len + 1) >= (MQTT_MNG_SUBS_BUFFER_SIZE - mqttmng.subsbufSize) ){
+        LogError( ("Failed to format topic %s to full topic buffer.", topic) );
+        mqttmngUnlock();
+        return -2;
+    }
 
     mqttmng.subsbufSize += len + 1;
 
-    LogInfo( ("Subscribing to %s", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1]) );
+    LogInfo( ("Full topic: %s.", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1]) );
 
     int returnStatus = EXIT_SUCCESS;
     SubscriptionManagerStatus_t managerStatus = ( SubscriptionManagerStatus_t ) 0u;
@@ -392,35 +413,50 @@ int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSu
                                                           len,
                                                           callback );
 
-    if( managerStatus != SUBSCRIPTION_MANAGER_SUCCESS )
-    {
-        returnStatus = EXIT_FAILURE;
-    }
-    else
-    {
-        LogInfo( ( "Subscribing to the MQTT topic %.*s.",
-                   len,
-                   &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1] ) );
-
-        returnStatus = mqttmngSubscribeToTopic( pContext,
-                                         &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1],
-                                         len,
-                                         qos );
+    if( managerStatus != SUBSCRIPTION_MANAGER_SUCCESS ){
+        LogError( ("Failed to register callback for topic %s.", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1]) );
+        mqttmngUnlock();
+        return -1;
     }
 
-    if( returnStatus != EXIT_SUCCESS )
-    {
+    returnStatus = mqttmngSubscribeToTopic( pContext,
+                                        &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1],
+                                        len,
+                                        0 );
+
+    if( returnStatus < 0 ){
+        LogError( ("Failed to subscribe to topic %s.", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1]) );
+
         /* Remove the registered callback for the temperature topic filter as
         * the subscription operation for the topic filter did not succeed. */
         ( void ) SubscriptionManager_RemoveCallback( &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1],
                                                      len );
+
+        mqttmngUnlock();
+        return -1;
     }
 
     mqttmngUnlock();
 
-    LogInfo( ("Subscription status %d", returnStatus) );
+    LogInfo( ( "Subscribed sent to MQTT topic %s.", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1] ) );
 
-    return returnStatus;
+    return id;
+}
+//-----------------------------------------------------------------------------
+int mqttmngIsIdWaitingAck(uint16_t id){
+
+    uint32_t k;
+
+    int status = 0;
+
+    for(k = 0; k < OUTGOING_PUBLISH_RECORD_LEN; k++){
+        if( mqttmng.packetsAwaitingAck[k] == (int32_t)id ){
+            status = -1;
+            break;
+        }
+    }
+
+    return status;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -545,7 +581,11 @@ static int mqttmngEstablishMqttSession(void){
 //-----------------------------------------------------------------------------
 static int32_t mqttmngPublishListComponents(void){
 
-    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) return -1;
+    LogInfo( ("Publishing list of components...") );
+    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ){
+        LogError( ("Failed to obtain lock when trying to publish components.") );
+        return -1;
+    }
 
     int returnStatus;
     char buf[MQTT_MNG_WRITE_BUFFER_SIZE] = {0};
@@ -599,8 +639,6 @@ static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload){
     /* Get a new packet ID for the publish. */
     pubPacketId = MQTT_GetPacketId( pMqttContext );
 
-    LogInfo( ("Publishing to %s", topic) );
-
     /* Send PUBLISH packet. */
     mqttStatus = MQTT_Publish( pMqttContext,
                                 &publishInfo,
@@ -612,74 +650,53 @@ static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload){
         return -1;
     }
 
-    LogInfo( ("Publish status %d", mqttStatus) );
-
     return 0;
 }
 //-----------------------------------------------------------------------------
 static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
                                   MQTTPacketInfo_t * pPacketInfo,
-                                  MQTTDeserializedInfo_t * pDeserializedInfo )
-{
-    //assert( pMqttContext != NULL );
-    //assert( pPacketInfo != NULL );
-    //assert( pDeserializedInfo != NULL );
-    //assert( pDeserializedInfo->packetIdentifier != MQTT_PACKET_ID_INVALID );
+                                  MQTTDeserializedInfo_t * pDeserializedInfo ){
 
-    LogInfo( ("Packet id: %d", pDeserializedInfo->packetIdentifier) );
+    LogInfo( ("Processing event for packet id: %d", pDeserializedInfo->packetIdentifier) );
     /* Handle incoming publish. The lower 4 bits of the publish packet
      * type is used for the dup, QoS, and retain flags. Hence masking
      * out the lower bits to check if the packet is publish. */
-    if( ( pPacketInfo->type & 0xF0U ) == MQTT_PACKET_TYPE_PUBLISH )
-    {
-        //assert( pDeserializedInfo->pPublishInfo != NULL );
+    if( ( pPacketInfo->type & 0xF0U ) == MQTT_PACKET_TYPE_PUBLISH ){
         /* Handle incoming publish. */
         SubscriptionManager_DispatchHandler( pMqttContext, pDeserializedInfo->pPublishInfo );
+        return;
     }
-    else
+
+    /* Handle other packets. */
+    switch( pPacketInfo->type )
     {
-        /* Handle other packets. */
-        switch( pPacketInfo->type )
-        {
-            case MQTT_PACKET_TYPE_SUBACK:
-                LogInfo( ( "Received SUBACK." ) );
-                /* Make sure ACK packet identifier matches with Request packet identifier. */
-                //assert( lastSubscribePacketIdentifier == pDeserializedInfo->packetIdentifier );
+        case MQTT_PACKET_TYPE_SUBACK:
 
-                /* Update the global ACK packet identifier. */
-                globalAckPacketIdentifier = pDeserializedInfo->packetIdentifier;
-                break;
+            LogInfo( ("Received SUBACK for packet id %d", pDeserializedInfo->packetIdentifier) );
+            mqttmngRemovePacketIdToList( pDeserializedInfo->packetIdentifier );
+            break;
 
-            case MQTT_PACKET_TYPE_UNSUBACK:
-                LogInfo( ( "Received UNSUBACK." ) );
-                /* Make sure ACK packet identifier matches with Request packet identifier. */
-                //assert( lastUnsubscribePacketIdentifier == pDeserializedInfo->packetIdentifier );
+        case MQTT_PACKET_TYPE_UNSUBACK:
+            LogInfo( ( "Received UNSUBACK." ) );
+            break;
 
-                /* Update the global ACK packet identifier. */
-                globalAckPacketIdentifier = pDeserializedInfo->packetIdentifier;
-                break;
+        case MQTT_PACKET_TYPE_PINGRESP:
 
-            case MQTT_PACKET_TYPE_PINGRESP:
+            /* Nothing to be done from application as library handles
+                * PINGRESP. */
+            LogWarn( ( "PINGRESP should not be handled by the application "
+                        "callback when using MQTT_ProcessLoop." ) );
+            break;
 
-                /* Nothing to be done from application as library handles
-                 * PINGRESP. */
-                LogWarn( ( "PINGRESP should not be handled by the application "
-                           "callback when using MQTT_ProcessLoop." ) );
-                break;
+        case MQTT_PACKET_TYPE_PUBACK:
+            LogInfo( ( "PUBACK received for packet id %u.",
+                        pDeserializedInfo->packetIdentifier ) );
+            break;
 
-            case MQTT_PACKET_TYPE_PUBACK:
-                LogInfo( ( "PUBACK received for packet id %u.",
-                           pDeserializedInfo->packetIdentifier ) );
-
-                /* Update the global ACK packet identifier. */
-                globalAckPacketIdentifier = pDeserializedInfo->packetIdentifier;
-                break;
-
-            /* Any other packet type is invalid. */
-            default:
-                LogError( ( "Unknown packet type received:(%02x).",
-                            pPacketInfo->type ) );
-        }
+        /* Any other packet type is invalid. */
+        default:
+            LogError( ( "Unknown packet type received:(%02x).",
+                        pPacketInfo->type ) );
     }
 }
 
@@ -689,6 +706,7 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
                                     uint16_t topicFilterLength,
                                     uint16_t qos )
 {
+    uint16_t id;
     int returnStatus = EXIT_SUCCESS;
     MQTTStatus_t mqttStatus;
     MQTTSubscribeInfo_t pSubscriptionList[ 1 ];
@@ -703,34 +721,24 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
     pSubscriptionList[ 0 ].topicFilterLength = topicFilterLength;
 
     /* Generate packet identifier for the SUBSCRIBE packet. */
-    lastSubscribePacketIdentifier = MQTT_GetPacketId( pMqttContext );
+    id = MQTT_GetPacketId( pMqttContext );
+
+    LogInfo( ("Adding packet id %d to list for topic %s.", id, pTopicFilter) );
+    mqttmngAddPacketIdToList(id);
 
     /* Send SUBSCRIBE packet. */
     mqttStatus = MQTT_Subscribe( pMqttContext,
                                  pSubscriptionList,
                                  sizeof( pSubscriptionList ) / sizeof( MQTTSubscribeInfo_t ),
-                                 lastSubscribePacketIdentifier );
+                                 id );
 
-    if( mqttStatus != MQTTSuccess )
-    {
+    if( mqttStatus != MQTTSuccess ){
         LogError( ( "Failed to send SUBSCRIBE packet to broker with error = %u.",
                     mqttStatus ) );
-        returnStatus = EXIT_FAILURE;
+        return -1;
     }
-    else
-    {
-        LogInfo( ( "SUBSCRIBE sent for topic %.*s to broker.",
-                   topicFilterLength,
-                   pTopicFilter ) );
-
-        /* Wait for acknowledgement packet (SUBACK) from the broker in response to the
-         * subscribe request. */
-        returnStatus = mqttmngWaitForPacketAck( pMqttContext,
-                                                lastSubscribePacketIdentifier,
-                                                MQTT_PROCESS_LOOP_TIMEOUT_MS );
-    }
-
-    return returnStatus;
+ 
+    return id;
 }
 //-----------------------------------------------------------------------------
 static int mqttmngWaitForPacketAck( MQTTContext_t * pMqttContext,
@@ -784,7 +792,7 @@ static int32_t mqttmngLock(uint32_t timeout){
     if( mqttmng.lock == 0 ) return 0;
 
     if( mqttmng.lock(timeout) != 0 ){
-        LogInfo( ("Failed to take lock") );
+        LogError( ("Failed to take lock") );
         return -1;
     }
 
@@ -794,6 +802,30 @@ static int32_t mqttmngLock(uint32_t timeout){
 static void mqttmngUnlock(void){
 
     if( mqttmng.unlock != 0 ) mqttmng.unlock();
+}
+//-----------------------------------------------------------------------------
+static void mqttmngAddPacketIdToList(uint16_t id){
+    
+    uint32_t k;
+
+    for(k = 0; k < OUTGOING_PUBLISH_RECORD_LEN; k++){
+        if( mqttmng.packetsAwaitingAck[k] == -1){
+            mqttmng.packetsAwaitingAck[k] = (int32_t) id;
+            break;
+        }
+    }
+}
+//-----------------------------------------------------------------------------
+static void mqttmngRemovePacketIdToList(uint16_t id){
+
+    uint32_t k;
+
+    for(k = 0; k < OUTGOING_PUBLISH_RECORD_LEN; k++){
+        if( mqttmng.packetsAwaitingAck[k] == id){
+            mqttmng.packetsAwaitingAck[k] = -1;
+            break;
+        }
+    }
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

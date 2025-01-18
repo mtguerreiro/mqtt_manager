@@ -44,7 +44,9 @@ int32_t mqttmngAddComponent(uint32_t id, const char *name, const char *type, con
 //-----------------------------------------------------------------------------
 int32_t mqttmngPublish(uint32_t id, const char *comptopic, mqttmngPayload_t *payload);
 //-----------------------------------------------------------------------------
-int32_t mqttmngSubscribe(uint32_t id, const char *topic, uint32_t qos, mqttmngSubscrCb_t callback);
+int32_t mqttmngSubscribe(uint32_t id, const char *topic, mqttmngSubscrCb_t callback);
+//-----------------------------------------------------------------------------
+int mqttmngIsIdWaitingAck(uint16_t id);
 //-----------------------------------------------------------------------------
 //=============================================================================
 

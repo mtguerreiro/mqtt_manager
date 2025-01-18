@@ -25,6 +25,8 @@ add_subdirectory(${SVMQTT_PATH}/platform "${PROJECT_BINARY_DIR}/platform")
 # Include subscription manager
 add_subdirectory(${SVMQTT_PATH}/subscription_manager "${PROJECT_BINARY_DIR}/subscription_manager")
 
+add_subdirectory(threads)
+
 add_compile_definitions(MQTT_DO_NOT_USE_CUSTOM_CONFIG)
 add_compile_options(-Wall
         -Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
@@ -45,6 +47,7 @@ add_executable(
 target_link_libraries(
     ${DEMO_NAME}
     PRIVATE
+        threads
         subscription_manager
         clock
         plaintext_transport
