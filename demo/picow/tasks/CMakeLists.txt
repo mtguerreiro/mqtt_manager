@@ -6,6 +6,7 @@ add_library(${DEMO_NAME_TASKS}
     task_svmqtt.c
     task_temperature.c
     task_led.c
+    task_wdt.c
     )
 
 target_compile_definitions(${DEMO_NAME_TASKS} PRIVATE

@@ -2,60 +2,48 @@
 //=============================================================================
 /*-------------------------------- Includes ---------------------------------*/
 //=============================================================================
-#include "task_blink.h"
+#include "task_wdt.h"
 
 /* Kernel */
 #include "FreeRTOS.h"
 #include "task.h"
 
 /* Device and drivers */
-#include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
+#include "hardware/watchdog.h"
 
-#include "task_wifi_init.h"
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Defines ---------------------------------*/
 //=============================================================================
-#define TASK_BLINK_LED   CYW43_WL_GPIO_LED_PIN
 
-typedef struct{
-
-	/* Blink period */
-	uint32_t period;
-
-} blinkControl_t;
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-/* Task control structure */
-blinkControl_t xblinkControl;
+
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
-static void taskBlinkInitialize(void);
-static int32_t taskBlinkPeriodUpdate(void *in, uint32_t insize, void **out, uint32_t maxoutsize);
-static void taskBlinkCheckWifi(void);
-static void taskBlinkToggle(void);
+static void taskWdtInit(void);
 //=============================================================================
 
 //=============================================================================
 /*---------------------------------- Task -----------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-void taskBlink(void *param){
+void taskWdt(void *param){
 
-    taskBlinkInitialize();
+    taskWdtInit();
 
     while(1){
-        taskBlinkCheckWifi();
-    	taskBlinkToggle();
-        vTaskDelay(xblinkControl.period);
+        
+        watchdog_update();
+        vTaskDelay(TASK_WDT_CONFIG_DEFAULT_PERIOD_MS / portTICK_PERIOD_MS);
     }
 }
 //-----------------------------------------------------------------------------
@@ -65,39 +53,9 @@ void taskBlink(void *param){
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-static void taskBlinkInitialize(void){
+static void taskWdtInit(void){
 
-	/* Sets default blinking period */
-	xblinkControl.period = TASK_BLINK_CONFIG_DEFAULT_PERIOD_MS / portTICK_PERIOD_MS;
-}
-//-----------------------------------------------------------------------------
-static int32_t taskBlinkPeriodUpdate(void *in, uint32_t insize, void **out, uint32_t maxoutsize){
-
-	uint32_t period;
-
-	period = *((uint32_t *)(in));
-
-	xblinkControl.period = period / portTICK_PERIOD_MS;
-
-    return 0;
-}
-//-----------------------------------------------------------------------------
-static void taskBlinkCheckWifi(void){
-
-    int status;
-
-    status = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
-
-    if( status != 1 ) xblinkControl.period = 250 / portTICK_PERIOD_MS;
-    else xblinkControl.period = 1000 / portTICK_PERIOD_MS;
-}
-//-----------------------------------------------------------------------------
-static void taskBlinkToggle(void){
-
-    static bool state = 0;
-
-    cyw43_arch_gpio_put(TASK_BLINK_LED, state);
-    state = !state;
+    watchdog_enable(2 * TASK_WDT_CONFIG_DEFAULT_PERIOD_MS, 1);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

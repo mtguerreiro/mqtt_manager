@@ -80,8 +80,8 @@ static void taskLedInitialize(void){
 
     while( taskSvmqttStatus() != 0 );
 
-    mqttmngSubscribe(MQTT_MNG_COMP_2, "state", 0, taskLedUpdateStateMqtt);
-    mqttmngSubscribe(MQTT_MNG_COMP_2, "rgb", 0, taskLedUpdateRgbMqtt);
+    mqttmngSubscribe(MQTT_MNG_COMP_2, "state", taskLedUpdateStateMqtt);
+    mqttmngSubscribe(MQTT_MNG_COMP_2, "rgb", taskLedUpdateRgbMqtt);
 }
 //-----------------------------------------------------------------------------
 static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
