@@ -209,7 +209,7 @@ struct NetworkContext
 };
 
 #define MQTT_MNG_LOCK_TIMEOUT_MS    2000
-#define MQTT_MNG_PROC_DELAY_MS      10
+#define MQTT_MNG_PROC_DELAY_MS      50
 #define MQTT_MNG_SUBS_BUFFER_SIZE   128
 #define MQTT_MNG_WRITE_BUFFER_SIZE  128
 #define MQTT_MNG_READ_BUFFER_SIZE   128
@@ -243,6 +243,7 @@ typedef struct{
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
+static int mqttmngResetSession(void);
 static int mqttmngSocketConnect(void);
 static int mqttmngEstablishMqttSession(void);
 
@@ -255,10 +256,6 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
                                     const char * pTopicFilter, 
                                     uint16_t topicFilterLength,
                                     uint16_t qos );
-
-static int mqttmngWaitForPacketAck( MQTTContext_t * pMqttContext,
-                                    uint16_t usPacketIdentifier,
-                                    uint32_t ulTimeout );
 
 static int32_t mqttmngPublishListComponents(void);
 
@@ -306,6 +303,8 @@ int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock){
 }
 //-----------------------------------------------------------------------------
 void mqttmngRun(void){
+
+    int32_t status;
     
     mqttmngPublishListComponents();
 
@@ -313,9 +312,14 @@ void mqttmngRun(void){
 
         if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) continue;
 
-        MQTT_ProcessLoop( &mqttmng.mqttContext );
-
+        status = MQTT_ProcessLoop( &mqttmng.mqttContext );
+        
         mqttmngUnlock();
+
+        if( (status != MQTTSuccess) && (status != MQTTNeedMoreBytes) ){
+            LogWarn( ("Seems like there was a problem with the connection. Will try to reset it..."));
+            mqttmngResetSession();
+        }
 
         Clock_SleepMs(MQTT_MNG_PROC_DELAY_MS);
 	}
@@ -741,52 +745,6 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
     return id;
 }
 //-----------------------------------------------------------------------------
-static int mqttmngWaitForPacketAck( MQTTContext_t * pMqttContext,
-                                    uint16_t usPacketIdentifier,
-                                    uint32_t ulTimeout )
-{
-    uint32_t ulMqttProcessLoopEntryTime;
-    uint32_t ulMqttProcessLoopTimeoutTime;
-    uint32_t ulCurrentTime;
-
-    MQTTStatus_t eMqttStatus = MQTTSuccess;
-    int returnStatus = EXIT_FAILURE;
-
-    /* Reset the ACK packet identifier being received. */
-    globalAckPacketIdentifier = 0U;
-
-    ulCurrentTime = pMqttContext->getTime();
-    ulMqttProcessLoopEntryTime = ulCurrentTime;
-    ulMqttProcessLoopTimeoutTime = ulCurrentTime + ulTimeout;
-
-    /* Call MQTT_ProcessLoop multiple times until the expected packet ACK
-     * is received, a timeout happens, or MQTT_ProcessLoop fails. */
-    while( ( globalAckPacketIdentifier != usPacketIdentifier ) &&
-           ( ulCurrentTime < ulMqttProcessLoopTimeoutTime ) &&
-           ( eMqttStatus == MQTTSuccess || eMqttStatus == MQTTNeedMoreBytes ) )
-    {
-        /* Event callback will set #globalAckPacketIdentifier when receiving
-         * appropriate packet. */
-        eMqttStatus = MQTT_ProcessLoop( pMqttContext );
-        ulCurrentTime = pMqttContext->getTime();
-    }
-
-    if( ( ( eMqttStatus != MQTTSuccess ) && ( eMqttStatus != MQTTNeedMoreBytes ) ) ||
-        ( globalAckPacketIdentifier != usPacketIdentifier ) )
-    {
-        LogError( ( "MQTT_ProcessLoop failed to receive ACK packet: Expected ACK Packet ID=%02X, LoopDuration=%u, Status=%s",
-                    usPacketIdentifier,
-                    ( ulCurrentTime - ulMqttProcessLoopEntryTime ),
-                    MQTT_Status_strerror( eMqttStatus ) ) );
-    }
-    else
-    {
-        returnStatus = EXIT_SUCCESS;
-    }
-
-    return returnStatus;
-}
-//-----------------------------------------------------------------------------
 static int32_t mqttmngLock(uint32_t timeout){
 
     if( mqttmng.lock == 0 ) return 0;
@@ -826,6 +784,18 @@ static void mqttmngRemovePacketIdToList(uint16_t id){
             break;
         }
     }
+}
+//-----------------------------------------------------------------------------
+static int mqttmngResetSession(void){
+
+    MQTT_Disconnect( &mqttmng.mqttContext );
+    Plaintext_Disconnect( &mqttmng.networkContext );
+
+    if( mqttmngSocketConnect() != 0 ) return -1;
+
+    if( mqttmngEstablishMqttSession() != 0 ) return -1;
+
+    return 0;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
