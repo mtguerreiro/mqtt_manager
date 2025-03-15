@@ -44,6 +44,8 @@ static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *p
 static void taskLedUpdateState(uint8_t state);
 static void taskLedUpdateRgbMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
 static void taskLedUpdateRgb(uint8_t *data);
+static void taskLedUpdateIntensityMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
+// static void taskLedUpdateRgb(uint8_t *data);
 //=============================================================================
 
 //=============================================================================
@@ -82,6 +84,7 @@ static void taskLedInitialize(void){
 
     mqttmngSubscribe(MQTT_MNG_COMP_2, "state", taskLedUpdateStateMqtt);
     mqttmngSubscribe(MQTT_MNG_COMP_2, "rgb", taskLedUpdateRgbMqtt);
+    mqttmngSubscribe(MQTT_MNG_COMP_2, "intensity", taskLedUpdateIntensityMqtt);
 }
 //-----------------------------------------------------------------------------
 static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
@@ -138,6 +141,23 @@ static void taskLedUpdateRgb(uint8_t *data){
     // payload.retain = 0;
 
     // mqttmngPublish(MQTT_MNG_COMP_1, "temperature", &payload);
+}
+//-----------------------------------------------------------------------------
+static void taskLedUpdateIntensityMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
+
+    assert( pPublishInfo != NULL );
+    assert( pContext != NULL );
+
+    /* Suppress unused parameter warning when asserts are disabled in build. */
+    ( void ) pContext;
+
+    printf( "Invoked led intensity callback." );
+
+    float duty = *((float *) pPublishInfo->pPayload);
+    
+    printf("Duty: %.4f", duty);
+    //taskLedUpdateRgb( (uint8_t *) pPublishInfo->pPayload );
+
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

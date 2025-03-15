@@ -87,13 +87,13 @@ void taskWifiInit(void *param){
         TASK_LED_CONFIG_TASK_PRIO,
         NULL );
 
-    xTaskCreate(
-        taskWdt,
-        "wdt",
-        TASK_WDT_CONFIG_TASK_STACK_SIZE,
-        NULL,
-        TASK_WDT_CONFIG_TASK_PRIO,
-        NULL );   
+    // xTaskCreate(
+    //     taskWdt,
+    //     "wdt",
+    //     TASK_WDT_CONFIG_TASK_STACK_SIZE,
+    //     NULL,
+    //     TASK_WDT_CONFIG_TASK_PRIO,
+    //     NULL );   
 
     vTaskDelete( NULL );
 

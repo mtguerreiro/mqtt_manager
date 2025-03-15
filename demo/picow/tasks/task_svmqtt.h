@@ -12,7 +12,7 @@
 /*--------------------------------- Defines ---------------------------------*/
 //=============================================================================
 /* Priority and stack size of this task */
-#define TASKS_SVMQTT_CONFIG_TASK_PRIO           2
+#define TASKS_SVMQTT_CONFIG_TASK_PRIO           3
 #define TASKS_SVMQTT_CONFIG_TASK_STACK_SIZE		2048
 
 //=============================================================================

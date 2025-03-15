@@ -318,7 +318,8 @@ void mqttmngRun(void){
 
         if( (status != MQTTSuccess) && (status != MQTTNeedMoreBytes) ){
             LogWarn( ("Seems like there was a problem with the connection. Will try to reset it..."));
-            mqttmngResetSession();
+            exit(-1);
+            //mqttmngResetSession();
         }
 
         Clock_SleepMs(MQTT_MNG_PROC_DELAY_MS);
