@@ -70,6 +70,9 @@ void* taskTemperature(void *param){
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitialize(void){
 
+    mqttmngAddComponent(MQTT_MNG_COMP_1, (const char*)"temp1", (const char*)"temperature", (const char*)0);
+    while( mqttmngInitDone() != 0 );
+
     t.tv_sec = (TASK_TEMPERATURE_CFG_PERIOD_MS) / 1000;
     t.tv_nsec = (TASK_TEMPERATURE_CFG_PERIOD_MS) * 1000000U - t.tv_sec * 1000000000U;
 

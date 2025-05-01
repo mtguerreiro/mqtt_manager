@@ -235,6 +235,9 @@ typedef struct{
     mqttmngLock_t lock;
     mqttmngUnlock_t unlock;
 
+    char initDone;
+    uint8_t nRegisteredComponents;
+
     int32_t packetsAwaitingAck[OUTGOING_PUBLISH_RECORD_LEN];
 }mqttmng_t;
 
@@ -276,6 +279,8 @@ static mqttmng_t mqttmng = {
     .names = {0}, .flags = {0}, .subsbufSize = 0,
     .mqttContext = {0}, .networkContext = {0}, .plaintextParams = {0},
     .lock = 0, .unlock = 0,
+    .initDone = 0,
+    .nRegisteredComponents = 0
     };
 
 //=============================================================================
@@ -299,14 +304,16 @@ int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock){
     status = mqttmngEstablishMqttSession();
     if( status != 0 ) return status;
 
+    mqttmngPublishListComponents();
+
+    mqttmng.initDone = 1;
+
     return 0;
 }
 //-----------------------------------------------------------------------------
 void mqttmngRun(void){
 
     int32_t status;
-    
-    mqttmngPublishListComponents();
 
 	while( 1 ){
 
@@ -328,11 +335,13 @@ void mqttmngRun(void){
 //-----------------------------------------------------------------------------
 int32_t mqttmngAddComponent(uint32_t id, const char *name, const char *type, const char *flags){
 
-    if( id > MQTT_MNG_COMP_END ) return -1;
+    if( id >= MQTT_MNG_COMP_END ) return -1;
 
     mqttmng.names[id] = name;
     mqttmng.types[id] = type;
     mqttmng.flags[id] = flags;
+
+    mqttmng.nRegisteredComponents++;
 
     LogInfo( ("Added component %s with type %s and flags [%s]", name, type, flags) );
 
@@ -342,6 +351,8 @@ int32_t mqttmngAddComponent(uint32_t id, const char *name, const char *type, con
 int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload){
 
     int status;
+
+    if( mqttmng.initDone == 0 ) return -1;
 
     if( id >= MQTT_MNG_COMP_END ) return -1;
 
@@ -378,6 +389,8 @@ int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload
 }
 //-----------------------------------------------------------------------------
 int32_t mqttmngSubscribe(uint32_t id, const char *topic, mqttmngSubscrCb_t callback){
+
+    if( mqttmng.initDone == 0 ) return -1;
 
     if( id >= MQTT_MNG_COMP_END ) return -1;
 
@@ -462,6 +475,13 @@ int mqttmngIsIdWaitingAck(uint16_t id){
     }
 
     return status;
+}
+//-----------------------------------------------------------------------------
+int mqttmngInitDone(void){
+
+    if( mqttmng.initDone == 0 ) return -1;
+
+    return 0;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -587,10 +607,17 @@ static int mqttmngEstablishMqttSession(void){
 static int32_t mqttmngPublishListComponents(void){
 
     LogInfo( ("Publishing list of components...") );
+
+    LogInfo( ("Waiting for nRegisteredComponents...") );
+    while( mqttmng.nRegisteredComponents != MQTT_MNG_COMP_END );
+    LogInfo( ("All expected components have been registered.") );
+
     if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when trying to publish components.") );
         return -1;
     }
+
+    LogInfo( ("Proceeding to publish list of components...") );
 
     int returnStatus;
     char buf[MQTT_MNG_WRITE_BUFFER_SIZE] = {0};
