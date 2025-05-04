@@ -16,9 +16,6 @@ set(CMAKE_C_STANDARD_REQUIRED True)
 # Include MQTT library's source and header path variables.
 include( ${SVMQTT_PATH}/coreMQTT/mqttFilePaths.cmake )
 
-# Include backoffAlgorithm library file path configuration.
-include( ${SVMQTT_PATH}/backoffAlgorithm/backoffAlgorithmFilePaths.cmake )
-
 # Include platform
 add_subdirectory(${SVMQTT_PATH}/platform "${PROJECT_BINARY_DIR}/platform")
 
@@ -41,7 +38,6 @@ add_executable(
         "${DEMO_FILE}"
         ${MQTT_SOURCES}
         ${MQTT_SERIALIZER_SOURCES}
-        ${BACKOFF_ALGORITHM_SOURCES}
 )
 
 target_link_libraries(
@@ -56,7 +52,6 @@ target_include_directories(
     ${DEMO_NAME}
     PUBLIC
         ${MQTT_INCLUDE_PUBLIC_DIRS}
-        ${BACKOFF_ALGORITHM_INCLUDE_PUBLIC_DIRS}
         ${CMAKE_CURRENT_LIST_DIR}
         ${SVMQTT_PATH}/platform/transport
         ${SVMQTT_PATH}/platform/clock
