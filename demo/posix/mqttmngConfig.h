@@ -44,16 +44,11 @@ typedef enum{
 }mqttmngComponents_t;
 
 #define MQTT_MNG_CONFIG_DEV_ID  "dev-0e3ax1"
-#define MQTT_MNG_CONFIG_COMPONENTS_TOPIC MQTT_MNG_CONFIG_DEV_ID "/components"
 
 #define MQTT_MNG_CONFIG_HOST    "localhost"
 #define MQTT_MNG_CONFIG_PORT    1883
 
 #define MQTT_MNG_CONFIG_DBG     1
-
-#define BROKER_ENDPOINT         MQTT_MNG_CONFIG_HOST
-#define BROKER_PORT             MQTT_MNG_CONFIG_PORT
-#define CLIENT_IDENTIFIER       MQTT_MNG_CONFIG_DEV_ID
 //=============================================================================
 
 #endif /* MQTT_MNG_CONFIG_H_ */

@@ -4,13 +4,13 @@
 #include "task_temperature.h"
 
 /* Kernel */
+#include "time.h"
 
 /* Device and drivers */
 #include "stdio.h"
 
-
-#include "mqttmng.h"
 #include "mqttmngConfig.h"
+#include "mqttmng.h"
 
 #include "task_svmqtt.h"
 //=============================================================================
@@ -18,36 +18,37 @@
 //=============================================================================
 /*--------------------------------- Defines ---------------------------------*/
 //=============================================================================
-
+#define TASK_TEMPERATURE_CFG_PERIOD_MS      3000
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-//static SemaphoreHandle_t lock;
+static struct timespec t;
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
-static void taskLedInitialize(void);
-static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
-static void taskLedUpdateState(uint8_t state);
-static void taskLedUpdateRgbMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
-static void taskLedUpdateRgb(uint8_t *data);
+static void taskTemperatureInitialize(void);
+static void taskTemperatureUpdateMqtt(uint16_t temp);
 //=============================================================================
 
 //=============================================================================
 /*---------------------------------- Task -----------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-void* taskLed(void *param){
+void* taskTemperature(void *param){
 
-    taskLedInitialize();
+    int32_t status;
+    int32_t temp;
+    taskTemperatureInitialize();
 
-    return NULL;
+    while(1){
 
-    //vTaskDelete(NULL);
+        nanosleep(&t, NULL);
+        taskTemperatureUpdateMqtt( 20 );
+    }
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -56,65 +57,27 @@ void* taskLed(void *param){
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-static void taskLedInitialize(void){
+static void taskTemperatureInitialize(void){
 
-    // ledHwInitialize();
-
-    // ledConfig_t ledConfig;
-
-    // ledConfig.lock = 0;
-    // ledConfig.unlock = 0;
-    // ledConfig.hwSetColor = ledHwSetColor;
-    // ledConfig.hwSetIntensity = ledHwSetIntensity;
-    // ledConfig.hwGetNumberLeds = ledHwGetNumberLeds;
-    // ledConfig.hwIf = ledHwInterface;
-
-    // ledInitialize(&ledConfig);
-
-    mqttmngAddComponent(MQTT_MNG_COMP_2, (const char*)"led233", (const char*)"led", (const char*)"ri");
-
+    mqttmngAddComponent(MQTT_MNG_COMP_1, (const char*)"temp1", (const char*)"temperature", (const char*)0);
     while( mqttmngInitDone() != 0 );
 
-    mqttmngSubscribe(MQTT_MNG_COMP_2, "state", taskLedUpdateStateMqtt);
-    mqttmngSubscribe(MQTT_MNG_COMP_2, "rgb", taskLedUpdateRgbMqtt);
+    t.tv_sec = (TASK_TEMPERATURE_CFG_PERIOD_MS) / 1000;
+    t.tv_nsec = (TASK_TEMPERATURE_CFG_PERIOD_MS) * 1000000U - t.tv_sec * 1000000000U;
+
+    LogInfo( ("Running temperature task with. Timespec: %lu (s), %lu (ns).", t.tv_sec, t.tv_nsec) );
 }
 //-----------------------------------------------------------------------------
-static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
-
-    uint8_t state;
-
-    ( void ) pContext;
-
-    LogInfo( ("Invoked led state callback.") );
-    taskLedUpdateState( *( (uint8_t *) pPublishInfo->pPayload ) );
-}
-//-----------------------------------------------------------------------------
-static void taskLedUpdateState(uint8_t state){
-
-    LogInfo( ("Setting LED state to %d", state) );
-    // if( state )
-    //     ledSetIntensity(0, 4, 1000);
-    // else
-    //     ledSetIntensity(0, 0, 1000);
-    
-}
-//-----------------------------------------------------------------------------
-static void taskLedUpdateRgbMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
-
-    ( void ) pContext;
-
-    LogInfo( ("Invoked led rgb callback.") );
-    
-    taskLedUpdateRgb( (uint8_t *) pPublishInfo->pPayload );
-}
-//-----------------------------------------------------------------------------
-static void taskLedUpdateRgb(uint8_t *data){
+static void taskTemperatureUpdateMqtt(uint16_t temp){
 
     mqttmngPayload_t payload;
 
-    LogInfo( ("Setting LED color to %d %d %d", data[0], data[1], data[2]) );
+    payload.data = (void *)&temp;
+    payload.size = 2;
+    payload.dup = 0;
+    payload.retain = 0;
 
-    //ledSetColor(0, data[0], data[1], data[2], 1000);
+    mqttmngPublish(MQTT_MNG_COMP_1, "temperature", &payload);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

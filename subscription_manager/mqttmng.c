@@ -16,13 +16,6 @@
 #include "stdio.h"
 #include "assert.h"
 
-// #include "signal.h"
-// #include "stdio.h"
-// #include "string.h"
-
-/* Include Demo Config as the first non-system header. */
-//#include "demo_config.h"
-
 /* MQTT API header. */
 #include "core_mqtt.h"
 
@@ -39,32 +32,25 @@
 //=============================================================================
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
-/**
- * These configuration settings are required to run the basic TLS demo.
- * Throw compilation error if the below configs are not defined.
- */
-#ifndef BROKER_ENDPOINT
-    #error "Please define an MQTT broker endpoint, BROKER_ENDPOINT, in demo_config.h."
+#ifndef MQTT_MNG_CONFIG_HOST
+    #error "Please define MQTT_MNG_CONFIG_HOST to define the host in your config file."
 #endif
-#ifndef CLIENT_IDENTIFIER
-    #error "Please define a unique CLIENT_IDENTIFIER."
+#ifndef MQTT_MNG_CONFIG_DEV_ID
+    #error "Please define MQTT_MNG_CONFIG_DEV_ID to define a unique for your device."
 #endif
+
+#define MQTT_MNG_CONFIG_COMPONENTS_TOPIC    MQTT_MNG_CONFIG_DEV_ID "/components"
 
 /**
  * @brief Length of MQTT server host name.
  */
-#define BROKER_ENDPOINT_LENGTH      ( ( uint16_t ) ( sizeof( BROKER_ENDPOINT ) - 1 ) )
-
-/**
- * @brief Length of path to server certificate.
- */
-#define ROOT_CA_CERT_PATH_LENGTH    ( ( uint16_t ) ( sizeof( ROOT_CA_CERT_PATH ) - 1 ) )
+#define MQTT_MNG_CONFIG_HOST_LEN      ( ( uint16_t ) ( sizeof( MQTT_MNG_CONFIG_HOST ) - 1 ) )
 
 /**
  * Provide default values for undefined configuration settings.
  */
-#ifndef BROKER_PORT
-    #define BROKER_PORT    ( 8883 )
+#ifndef MQTT_MNG_CONFIG_PORT
+    #define MQTT_MNG_CONFIG_PORT    ( 8883 )
 #endif
 
 #ifndef NETWORK_BUFFER_SIZE
@@ -74,32 +60,12 @@
 /**
  * @brief Length of client identifier.
  */
-#define CLIENT_IDENTIFIER_LENGTH                 ( ( uint16_t ) ( sizeof( CLIENT_IDENTIFIER ) - 1 ) )
-
-/**
- * @brief The maximum number of retries for connecting to server.
- */
-#define CONNECTION_RETRY_MAX_ATTEMPTS            ( 5U )
-
-/**
- * @brief The maximum back-off delay (in milliseconds) for retrying connection to server.
- */
-#define CONNECTION_RETRY_MAX_BACKOFF_DELAY_MS    ( 5000U )
-
-/**
- * @brief The base back-off delay (in milliseconds) to use for connection retry attempts.
- */
-#define CONNECTION_RETRY_BACKOFF_BASE_MS         ( 500U )
+#define MQTT_MNG_CONFIG_DEV_ID_LEN                 ( ( uint16_t ) ( sizeof( MQTT_MNG_CONFIG_DEV_ID ) - 1 ) )
 
 /**
  * @brief Timeout for receiving CONNACK packet in milli seconds.
  */
 #define CONNACK_RECV_TIMEOUT_MS                 ( 1000U )
-
-/**
- * @brief Timeout for MQTT_ProcessLoop function in milliseconds.
- */
-#define MQTT_PROCESS_LOOP_TIMEOUT_MS            ( 500U )
 
 /**
  * @brief The maximum time interval in seconds which is allowed to elapse
@@ -111,11 +77,6 @@
  * PINGREQ Packet.
  */
 #define MQTT_KEEP_ALIVE_INTERVAL_SECONDS        ( 60U )
-
-/**
- * @brief Delay in seconds between two iterations of subscribePublishLoop().
- */
-#define MQTT_SUBPUB_LOOP_DELAY_SECONDS          ( 5U )
 
 /**
  * @brief Transport timeout in milliseconds for transport send and receive.
@@ -156,26 +117,6 @@ typedef struct PublishPackets
 /*-----------------------------------------------------------*/
 
 /**
- * @brief Packet Identifier updated when an ACK packet is received.
- *
- * It is used to match an expected ACK for a transmitted packet.
- */
-static uint16_t globalAckPacketIdentifier = 0U;
-
-/**
- * @brief Packet Identifier generated when Subscribe request was sent to the broker;
- * it is used to match received Subscribe ACK to the transmitted subscribe.
- */
-static uint16_t lastSubscribePacketIdentifier = 0U;
-
-/**
- * @brief Packet Identifier generated when Unsubscribe request was sent to the broker;
- * it is used to match received Unsubscribe ACK to the transmitted unsubscribe
- * request.
- */
-static uint16_t lastUnsubscribePacketIdentifier = 0U;
-
-/**
  * @brief The network buffer must remain valid for the lifetime of the MQTT context.
  */
 static uint8_t buffer[ NETWORK_BUFFER_SIZE ];
@@ -213,8 +154,6 @@ struct NetworkContext
 #define MQTT_MNG_SUBS_BUFFER_SIZE   128
 #define MQTT_MNG_WRITE_BUFFER_SIZE  128
 #define MQTT_MNG_READ_BUFFER_SIZE   128
-#define MQTT_MNG_DEV_ID_LEN         strlen(MQTT_MNG_CONFIG_DEV_ID)
-
 
 typedef struct{
 
@@ -501,14 +440,14 @@ static int mqttmngSocketConnect(void){
     ServerInfo_t serverInfo;
 
     /* Initialize information to connect to the MQTT broker. */
-    serverInfo.pHostName = BROKER_ENDPOINT;
-    serverInfo.hostNameLength = BROKER_ENDPOINT_LENGTH;
-    serverInfo.port = BROKER_PORT;
+    serverInfo.pHostName = MQTT_MNG_CONFIG_HOST;
+    serverInfo.hostNameLength = MQTT_MNG_CONFIG_HOST_LEN;
+    serverInfo.port = MQTT_MNG_CONFIG_PORT;
 
     LogInfo( ( "Creating a TCP connection to %.*s:%d.",
-                BROKER_ENDPOINT_LENGTH,
-                BROKER_ENDPOINT,
-                BROKER_PORT ) );
+                MQTT_MNG_CONFIG_HOST_LEN,
+                MQTT_MNG_CONFIG_HOST,
+                MQTT_MNG_CONFIG_PORT ) );
 
     socketStatus = Plaintext_Connect( pNetworkContext,
                                         &serverInfo,
@@ -517,9 +456,9 @@ static int mqttmngSocketConnect(void){
 
     if( socketStatus != SOCKETS_SUCCESS ){
         LogError( ( "Failed to create connection to %.*s:%d. Error code: %d",
-                    BROKER_ENDPOINT_LENGTH,
-                    BROKER_ENDPOINT,
-                    BROKER_PORT,
+                    MQTT_MNG_CONFIG_HOST_LEN,
+                    MQTT_MNG_CONFIG_HOST,
+                    MQTT_MNG_CONFIG_PORT,
                     socketStatus ) );
         return -1;
     }
@@ -573,8 +512,8 @@ static int mqttmngEstablishMqttSession(void){
 
     connectInfo.cleanSession = true;
 
-    connectInfo.pClientIdentifier = CLIENT_IDENTIFIER;
-    connectInfo.clientIdentifierLength = CLIENT_IDENTIFIER_LENGTH;
+    connectInfo.pClientIdentifier = MQTT_MNG_CONFIG_DEV_ID;
+    connectInfo.clientIdentifierLength = MQTT_MNG_CONFIG_DEV_ID_LEN;
 
     connectInfo.keepAliveSeconds = MQTT_KEEP_ALIVE_INTERVAL_SECONDS;
 
@@ -584,8 +523,8 @@ static int mqttmngEstablishMqttSession(void){
     connectInfo.passwordLength = 0U;
 
     LogInfo( ( "Creating an MQTT connection to %.*s.",
-                BROKER_ENDPOINT_LENGTH,
-                BROKER_ENDPOINT ) );
+                MQTT_MNG_CONFIG_HOST_LEN,
+                MQTT_MNG_CONFIG_HOST ) );
 
     /* Establish MQTT session by sending a CONNECT packet. */
     mqttStatus = MQTT_Connect( pMqttContext, &connectInfo, NULL, CONNACK_RECV_TIMEOUT_MS, &sessionPresent );
