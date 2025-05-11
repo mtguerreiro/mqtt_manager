@@ -13,15 +13,7 @@ message("-- Demo file is ${DEMO_FILE}")
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED True)
 
-# Include MQTT library's source and header path variables.
-include( ${SVMQTT_PATH}/coreMQTT/mqttFilePaths.cmake )
-
-# Include platform
-add_subdirectory(${SVMQTT_PATH}/platform "${PROJECT_BINARY_DIR}/platform")
-
-# Include subscription manager
-add_subdirectory(${SVMQTT_PATH}/subscription_manager "${PROJECT_BINARY_DIR}/subscription_manager")
-
+add_subdirectory(${SVMQTT_PATH} "${PROJECT_BINARY_DIR}/mqtt_manager")
 add_subdirectory(threads)
 
 add_compile_definitions(MQTT_DO_NOT_USE_CUSTOM_CONFIG)
@@ -36,25 +28,18 @@ add_compile_options(-Wall
 add_executable(
     ${DEMO_NAME}
         "${DEMO_FILE}"
-        ${MQTT_SOURCES}
-        ${MQTT_SERIALIZER_SOURCES}
 )
 
 target_link_libraries(
     ${DEMO_NAME}
     PRIVATE
-        threads
-        subscription_manager
-        clock
-        plaintext_transport
+    threads
+    mqtt_manager
 )
+
 target_include_directories(
     ${DEMO_NAME}
-    PUBLIC
-        ${MQTT_INCLUDE_PUBLIC_DIRS}
-        ${CMAKE_CURRENT_LIST_DIR}
-        ${SVMQTT_PATH}/platform/transport
-        ${SVMQTT_PATH}/platform/clock
-        ${SVMQTT_PATH}/logging
-        ${SVMQTT_PATH}/subscription_manager
+    PRIVATE
+    ${PROJECT_SOURCE_DIR}
+    ${SVMQTT_PATH}/logging
 )

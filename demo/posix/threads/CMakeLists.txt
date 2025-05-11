@@ -11,17 +11,12 @@ add_library(
 target_link_libraries(
     threads
     PRIVATE
-        subscription_manager
-        clock
-        plaintext_transport
+    mqtt_manager
 )
+
 target_include_directories(
     threads
     PRIVATE
-        ${PROJECT_SOURCE_DIR}
-        ${MQTT_INCLUDE_PUBLIC_DIRS}
-        ${SVMQTT_PATH}/platform/transport
-        ${SVMQTT_PATH}/platform/clock
-        ${SVMQTT_PATH}/logging
-        ${SVMQTT_PATH}/subscription_manager
+    ${PROJECT_SOURCE_DIR}
+    ${SVMQTT_PATH}/logging
 )
