@@ -2,12 +2,12 @@ cmake_minimum_required(VERSION 3.12)
 
 add_compile_definitions(MQTT_DO_NOT_USE_CUSTOM_CONFIG)
 
+add_subdirectory(platform)
+
 add_library(mqtt_manager)
 
 # Include MQTT library's source and header path variables.
 include( coreMQTT/mqttFilePaths.cmake )
-
-add_subdirectory(platform)
 
 # MQTT manager
 target_sources(

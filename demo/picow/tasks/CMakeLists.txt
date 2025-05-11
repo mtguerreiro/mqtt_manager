@@ -23,19 +23,12 @@ target_link_libraries(${DEMO_NAME_TASKS}
     temperature led
     modbus
     hw_pico_modules
-    subscription_manager
-    clock
-    plaintext_transport
+    mqtt_manager
 )
 
 target_include_directories(
     ${DEMO_NAME_TASKS} PRIVATE 
     "../"
     "${TIF_PATH}"
-    ${MQTT_INCLUDE_PUBLIC_DIRS}
-    ${BACKOFF_ALGORITHM_INCLUDE_PUBLIC_DIRS}
-    ${SVMQTT_PATH}/platform/transport
-    ${SVMQTT_PATH}/platform/clock
     ${SVMQTT_PATH}/logging
-    ${SVMQTT_PATH}/subscription_manager
 )

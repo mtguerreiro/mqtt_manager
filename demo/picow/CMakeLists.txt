@@ -37,12 +37,13 @@ pico_sdk_init()
 #include(example_auto_set_url.cmake)
 
 add_compile_definitions(MQTT_DO_NOT_USE_CUSTOM_CONFIG)
-add_compile_options(-Wall
-        -Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
-        -Wno-unused-function # we have some for the docs that aren't called
-        -Wno-maybe-uninitialized
-        -O2
-        )
+add_compile_options(
+    -Wall
+    -Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
+    -Wno-unused-function # we have some for the docs that aren't called
+    -Wno-maybe-uninitialized
+    -O2
+)
 
 # Include platform
 cmake_path(SET SVMQTT_PATH NORMALIZE "${PROJECT_SOURCE_DIR}/../../")
@@ -52,10 +53,7 @@ message("-- SVMQTT_PATH IS ${SVMQTT_PATH}")
 include( ${SVMQTT_PATH}/coreMQTT/mqttFilePaths.cmake )
 
 # Include subscription manager
-add_subdirectory(${SVMQTT_PATH}/subscription_manager "${PROJECT_BINARY_DIR}/subscription_manager")
-
-# Include platform
-add_subdirectory(${SVMQTT_PATH}/platform "${PROJECT_BINARY_DIR}/platform")
+add_subdirectory(${SVMQTT_PATH} "${PROJECT_BINARY_DIR}/mqtt_manager")
 
 # Libraries
 add_subdirectory(${TIF_PATH}/tif "${PROJECT_BINARY_DIR}/tif")
@@ -64,19 +62,13 @@ add_subdirectory(tasks)
 add_executable(
     ${DEMO_NAME}
     "${DEMO_NAME}.c"
-    ${MQTT_SOURCES}
-    ${MQTT_SERIALIZER_SOURCES}
 )
 
 target_include_directories(${DEMO_NAME} PUBLIC
         ${PROJECT_SOURCE_DIR}
         ${CMAKE_CURRENT_LIST_DIR}
         "${TIF_PATH}"
-        ${MQTT_INCLUDE_PUBLIC_DIRS}
-        ${SVMQTT_PATH}/platform/transport
-        ${SVMQTT_PATH}/platform/clock
         ${SVMQTT_PATH}/logging
-        ${SVMQTT_PATH}/subscription_manager
         )
 
 target_link_libraries(
@@ -86,9 +78,7 @@ target_link_libraries(
     pico_stdlib
     hw_pico_modules
     FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
-    subscription_manager
-    clock
-    plaintext_transport
+    mqtt_manager
 )
 
 # enable usb output, disable uart output
