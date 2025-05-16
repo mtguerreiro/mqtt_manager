@@ -67,9 +67,6 @@ void taskLed(void *param){
 //-----------------------------------------------------------------------------
 static void taskLedInitialize(void){
 
-	mqttmngAddComponent(MQTT_MNG_COMP_2, (const char*)"led233", (const char*)"led", (const char*)"ri");
-    while( mqttmngInitDone() != 0 );
-
     ledHwInitialize();
 
     ledConfig_t ledConfig;
@@ -83,7 +80,8 @@ static void taskLedInitialize(void){
 
     ledInitialize(&ledConfig);
 
-    while( taskSvmqttStatus() != 0 );
+	mqttmngAddComponent(MQTT_MNG_COMP_2, (const char*)"led233", (const char*)"led", (const char*)"ri");
+    while( mqttmngInitDone() != 0 );
 
     mqttmngSubscribe(MQTT_MNG_COMP_2, "state", taskLedUpdateStateMqtt);
     mqttmngSubscribe(MQTT_MNG_COMP_2, "rgb", taskLedUpdateRgbMqtt);

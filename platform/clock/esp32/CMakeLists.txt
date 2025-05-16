@@ -1,10 +1,15 @@
-set(COMPONENT_NAME "clock")
-
 idf_component_register(
     SRCS "clock_esp32.c"
-    INCLUDE_DIRS "../"  # Or the appropriate include folder if you have headers
-    REQUIRES esp_timer  # Automatically links the dependencies (like esp_common, esp_hw_support, etc.)
+    INCLUDE_DIRS "."
 )
+
+#set(COMPONENT_NAME "clock")
+
+#idf_component_register(
+#    SRCS "clock_esp32.c"
+#    INCLUDE_DIRS "../"  # Or the appropriate include folder if you have headers
+#    REQUIRES esp_timer  # Automatically links the dependencies (like esp_common, esp_hw_support, etc.)
+#)
 
 #cmake_minimum_required(VERSION 3.12)
 #

@@ -282,7 +282,7 @@ int32_t mqttmngAddComponent(uint32_t id, const char *name, const char *type, con
 
     mqttmng.nRegisteredComponents++;
 
-    LogInfo( ("Added component %s with type %s and flags [%s]", name, type, flags) );
+    LogInfo( ("Added component %s with type %s and flags [%s]", name, type, flags ? flags : "none") );
 
     return 0;
 }

@@ -14,7 +14,7 @@ uint32_t Clock_GetTimeMs( void )
 
     timems = esp_timer_get_time() / 1000;
 
-    return ( uint32_t ) timems );
+    return ( ( uint32_t ) timems );
 }
 
 /*-----------------------------------------------------------*/
