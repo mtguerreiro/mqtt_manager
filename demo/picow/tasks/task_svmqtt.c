@@ -77,9 +77,6 @@ static int32_t taskSvqmttInit(void){
 
     status = mqttmngInit(taskSvmqttLock, taskSvmqttUnlock);
 
- 	mqttmngAddComponent(MQTT_MNG_COMP_1, (const char*)"temp1", (const char*)"temperature", (const char*)0);
-	mqttmngAddComponent(MQTT_MNG_COMP_2, (const char*)"led233", (const char*)"led", (const char*)"ri");
-
 
     return status;
 }

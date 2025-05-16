@@ -75,6 +75,9 @@ void taskTemperature(void *param){
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitialize(void){
 
+ 	mqttmngAddComponent(MQTT_MNG_COMP_1, (const char*)"temp1", (const char*)"temperature", (const char*)0);
+    while( mqttmngInitDone() != 0 );
+
     taskTemperatureInitializeLock();
 
     temperatureHwInitialize();
