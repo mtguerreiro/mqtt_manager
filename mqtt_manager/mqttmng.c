@@ -158,9 +158,6 @@ struct NetworkContext
 typedef struct{
 
     mqttmngConfig_t *configs[MQTT_MNG_COMP_END];
-    // const char *names[MQTT_MNG_COMP_END];
-    // const char *types[MQTT_MNG_COMP_END];
-    // const char *flags[MQTT_MNG_COMP_END];
 
     unsigned char writebuf[MQTT_MNG_WRITE_BUFFER_SIZE];
     unsigned char readbuf[MQTT_MNG_READ_BUFFER_SIZE];
@@ -201,10 +198,8 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
                                     uint16_t qos );
 
 static int32_t mqttmngPublishListComponents(void);
-static int32_t mqttmngRepublishListComponents(void);
 
 static int32_t mqttmngSubscribeListTopics(void);
-static int32_t mqttmngResubscribeListTopics(void);
 
 static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload);
 
@@ -218,7 +213,6 @@ static void mqttmngRemovePacketIdToList(uint16_t id);
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-
 static mqttmng_t mqttmng = {
     .configs = {0},
     .subsbufSize = 0,
@@ -227,7 +221,6 @@ static mqttmng_t mqttmng = {
     .initDone = 0,
     .nRegisteredComponents = 0
     };
-
 //=============================================================================
 
 //=============================================================================
@@ -249,7 +242,14 @@ int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock){
     status = mqttmngEstablishMqttSession();
     if( status != 0 ) return status;
 
+    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ){
+        LogError( ("Failed to obtain lock when initializing.") );
+        return -1;
+    }
+
     mqttmngPublishListComponents();
+
+    mqttmngUnlock();
 
     mqttmng.initDone = 1;
 
@@ -259,9 +259,7 @@ int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock){
 void mqttmngRun(void){
 
     int32_t status;
-    uint32_t t1, t2;
     
-    t1 = Clock_GetTimeMs(); 
 	while( 1 ){
 
         if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) continue;
@@ -270,16 +268,8 @@ void mqttmngRun(void){
 
         if( (status != MQTTSuccess) && (status != MQTTNeedMoreBytes) ){
             LogWarn( ("Seems like there was a problem with the connection. Will try to reset it..."));
-            //exit(-1);
             mqttmngResetSession();
         }
-
-        t2 = Clock_GetTimeMs();
-        if ( (t2 - t1) > 10000 ){
-            t1 = Clock_GetTimeMs(); 
-            mqttmngResetSession();
-        } 
-
         mqttmngUnlock();
 
         Clock_SleepMs(MQTT_MNG_PROC_DELAY_MS);
@@ -337,22 +327,6 @@ int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload
     if( status != 0 ) return -1;
 
     return 0;
-}
-//-----------------------------------------------------------------------------
-int mqttmngIsIdWaitingAck(uint16_t id){
-
-    uint32_t k;
-
-    int status = 0;
-
-    for(k = 0; k < OUTGOING_PUBLISH_RECORD_LEN; k++){
-        if( mqttmng.packetsAwaitingAck[k] == (int32_t)id ){
-            status = -1;
-            break;
-        }
-    }
-
-    return status;
 }
 //-----------------------------------------------------------------------------
 int mqttmngInitDone(void){
@@ -488,14 +462,7 @@ static int32_t mqttmngPublishListComponents(void){
 
     LogInfo( ("Waiting for nRegisteredComponents...") );
     while( mqttmng.nRegisteredComponents != MQTT_MNG_COMP_END );
-    LogInfo( ("All expected components have been registered.") );
-
-    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ){
-        LogError( ("Failed to obtain lock when trying to publish components.") );
-        return -1;
-    }
-
-    LogInfo( ("Proceeding to publish list of components...") );
+    LogInfo( ("All expected components have been registered. Proceeding to publish list of components...") );
 
     int returnStatus;
     char buf[MQTT_MNG_WRITE_BUFFER_SIZE] = {0};
@@ -525,60 +492,14 @@ static int32_t mqttmngPublishListComponents(void){
 
     LogInfo( ("Publish status %d", returnStatus) );
 
-    if( returnStatus != 0 ){
-        mqttmngUnlock();
-        return returnStatus;
-    }
+    if( returnStatus != 0 ) return returnStatus;
 
     LogInfo( ("Now, subscribing to topics of components") );
 
     returnStatus = mqttmngSubscribeListTopics();
 
     LogInfo( ("Subscription status: %d", returnStatus) );
-
-    mqttmngUnlock();
     
-    return returnStatus;
-}
-//-----------------------------------------------------------------------------
-static int32_t mqttmngRepublishListComponents(void){
-
-    LogInfo( ("Republishing list of components...") );
-
-    int returnStatus;
-    char buf[MQTT_MNG_WRITE_BUFFER_SIZE] = {0};
-    uint32_t k;
-
-    /* TODO: improve forming the component topic's message */
-    for(k = 0; k < MQTT_MNG_COMP_END; k++){
-        strlcat(buf, mqttmng.configs[k]->name, sizeof(buf));
-        strlcat(buf, ":", sizeof(buf));
-        strlcat(buf, mqttmng.configs[k]->type, sizeof(buf));        
-        if( mqttmng.configs[k]->flags && strlen(mqttmng.configs[k]->flags) ){
-            strlcat(buf, "-", sizeof(buf));
-            strlcat(buf, mqttmng.configs[k]->flags, sizeof(buf));
-        }
-        strlcat(buf, ";", sizeof(buf));
-    }
-
-	mqttmngPayload_t payload;
-	payload.data = buf;
-	payload.size = strlen(buf);
-	payload.dup = 0;
-	payload.retain = 1;
-
-    LogInfo( ("Publishing components %s to %s", buf, MQTT_MNG_CONFIG_COMPONENTS_TOPIC) );
-
-    returnStatus = mqttmngPublishBare(MQTT_MNG_CONFIG_COMPONENTS_TOPIC, &payload);
-
-    LogInfo( ("Publish status %d", returnStatus) );
-
-    LogInfo( ("Now, subscribing to topics of components") );
-
-    returnStatus = mqttmngResubscribeListTopics();
-
-    LogInfo( ("Subscription status: %d", returnStatus) );
-
     return returnStatus;
 }
 //-----------------------------------------------------------------------------
@@ -586,6 +507,11 @@ static int32_t mqttmngSubscribeListTopics(void){
     
     uint32_t i, k;
     uint32_t len;
+    uint32_t resub = 1;
+
+    /* subsbufSize 0 means subscribe, otherwise resubscribe */
+    if( mqttmng.subsbufSize == 0 ) resub = 0;
+    else mqttmng.subsbufSize = 0;
 
     for(k = 0; k < MQTT_MNG_COMP_END; k++){
 
@@ -614,13 +540,15 @@ static int32_t mqttmngSubscribeListTopics(void){
             /* Register the topic filter and its callback with subscription manager.
              * On an incoming PUBLISH message whose topic name that matches the topic filter
              * being registered, its callback will be invoked. */
-            managerStatus = SubscriptionManager_RegisterCallback( &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1],
-                                                                  len,
-                                                                  mqttmng.configs[k]->subscriptions[i]->callback );
+            if( resub == 0){
+                managerStatus = SubscriptionManager_RegisterCallback( &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1],
+                                                                    len,
+                                                                    mqttmng.configs[k]->subscriptions[i]->callback );
 
-            if( managerStatus != SUBSCRIPTION_MANAGER_SUCCESS ){
-                LogError( ("Failed to register callback for topic %s.", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1]) );
-                return -1;
+                if( managerStatus != SUBSCRIPTION_MANAGER_SUCCESS ){
+                    LogError( ("Failed to register callback for topic %s.", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1]) );
+                    return -1;
+                }
             }
 
             returnStatus = mqttmngSubscribeToTopic( pContext,
@@ -639,61 +567,6 @@ static int32_t mqttmngSubscribeListTopics(void){
             }
 
             LogInfo( ( "Subscribed sent to MQTT topic %s.", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1] ) );
-
-        }
-    }
-
-    return 0;
-}
-//-----------------------------------------------------------------------------
-static int32_t mqttmngResubscribeListTopics(void){
-    
-    uint32_t i, k;
-    uint32_t len;
-
-    mqttmng.subsbufSize = 0;
-
-    for(k = 0; k < MQTT_MNG_COMP_END; k++){
-
-        for(i = 0; i < mqttmng.configs[k]->nSubscriptions; i++){
-
-        len = snprintf(&mqttmng.subsbuf[mqttmng.subsbufSize], 
-            MQTT_MNG_SUBS_BUFFER_SIZE - mqttmng.subsbufSize, 
-            "%s/%s/%s", 
-            MQTT_MNG_CONFIG_DEV_ID, 
-            mqttmng.configs[k]->name, 
-            mqttmng.configs[k]->subscriptions[i]->topic);
-
-            if( (len + 1) >= (MQTT_MNG_SUBS_BUFFER_SIZE - mqttmng.subsbufSize) ){
-                LogError( ("Failed to format topic %s to full topic buffer.", mqttmng.configs[k]->subscriptions[i]->topic) );
-                return -2;
-            }
-
-            mqttmng.subsbufSize += len + 1;
-
-            LogInfo( ("Full topic: %s.", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1]) );
-
-            int returnStatus = EXIT_SUCCESS;
-            SubscriptionManagerStatus_t managerStatus = ( SubscriptionManagerStatus_t ) 0u;
-            MQTTContext_t * pContext = &mqttmng.mqttContext;
-
-            returnStatus = mqttmngSubscribeToTopic( pContext,
-                                                &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1],
-                                                len,
-                                                0 );
-
-            if( returnStatus < 0 ){
-                LogError( ("Failed to subscribe to topic %s.", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1]) );
-
-                /* Remove the registered callback for the temperature topic filter as
-                * the subscription operation for the topic filter did not succeed. */
-                ( void ) SubscriptionManager_RemoveCallback( &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1],
-                                                             len );
-                return -1;
-            }
-
-            LogInfo( ( "Subscribed sent to MQTT topic %s.", &mqttmng.subsbuf[mqttmng.subsbufSize - len - 1] ) );
-
         }
     }
 
@@ -784,14 +657,10 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
 static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
                                     const char * pTopicFilter,
                                     uint16_t topicFilterLength,
-                                    uint16_t qos )
-{
+                                    uint16_t qos ){
     uint16_t id;
-    int returnStatus = EXIT_SUCCESS;
     MQTTStatus_t mqttStatus;
     MQTTSubscribeInfo_t pSubscriptionList[ 1 ];
-
-    //assert( pMqttContext != NULL );
 
     /* Start with everything at 0. */
     ( void ) memset( ( void * ) pSubscriptionList, 0x00, sizeof( pSubscriptionList ) );
@@ -868,7 +737,7 @@ static int mqttmngResetSession(void){
 
     Clock_SleepMs(MQTT_MNG_PROC_DELAY_MS);
     
-    LogInfo( ("Running one iteration of the reset procedure") );
+    LogInfo( ("Running an iteration of the reset procedure") );
 
     MQTT_Disconnect( &mqttmng.mqttContext );
     Plaintext_Disconnect( &mqttmng.networkContext );
@@ -877,7 +746,7 @@ static int mqttmngResetSession(void){
 
     if( mqttmngEstablishMqttSession() != 0 ) continue;
 
-    if( mqttmngRepublishListComponents() != 0 ) continue;
+    if( mqttmngPublishListComponents() != 0 ) continue;
     
     break;
 
