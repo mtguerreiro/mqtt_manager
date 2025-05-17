@@ -24,10 +24,7 @@
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-static int32_t svmqttStatus = 1;
-
 pthread_mutex_t mutex;
-//static SemaphoreHandle_t mutex;
 //=============================================================================
 
 //=============================================================================
@@ -51,16 +48,9 @@ void* taskSvmqtt(void *param){
 
     LogInfo( ("SVMQTT initialized.") );
 
-    svmqttStatus = 0;
-
     while(1){
         mqttmngRun();
     }
-}
-//-----------------------------------------------------------------------------
-int32_t taskSvmqttStatus(void){
-
-    return svmqttStatus;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -86,8 +76,6 @@ static int32_t taskSvmqttInitLock(void){
         LogInfo( ("Failed to initialize mutex.\n\r") );
         return -1;
     }
-    // mutex = xSemaphoreCreateMutex();
-    // if( mutex == NULL ) return -1;
 
     return 0;
 }
@@ -112,16 +100,12 @@ static int32_t taskSvmqttLock(uint32_t timeout){
 
     if( pthread_mutex_timedlock(&mutex, &t) != 0 ) return -1;
 
-    //if( xSemaphoreTake(mutex, timeout) != pdTRUE ) return -1;
-
     return 0;
 }
 //-----------------------------------------------------------------------------
 static void taskSvmqttUnlock(void){
 
     pthread_mutex_unlock( &mutex );
-
-    //xSemaphoreGive(mutex);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

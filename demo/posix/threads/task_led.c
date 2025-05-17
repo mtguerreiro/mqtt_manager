@@ -3,22 +3,18 @@
 //=============================================================================
 #include "task_temperature.h"
 
-/* Kernel */
-
-/* Device and drivers */
 #include "stdio.h"
-
 
 #include "mqttmng.h"
 #include "mqttmngConfig.h"
-
-#include "task_svmqtt.h"
 //=============================================================================
 
 //=============================================================================
-/*--------------------------------- Defines ---------------------------------*/
+/*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-
+mqttmngSubscrConfig_t mqttsubscr[2];
+mqttmngSubscrConfig_t *mqttsubscrptr[2];
+mqttmngConfig_t mqttconfig;
 //=============================================================================
 
 //=============================================================================
@@ -50,11 +46,24 @@ void* taskLed(void *param){
 //-----------------------------------------------------------------------------
 static void taskLedInitialize(void){
 
-    mqttmngAddComponent(MQTT_MNG_COMP_2, (const char*)"led233", (const char*)"led", (const char*)"ri");
-    while( mqttmngInitDone() != 0 );
+    mqttsubscr[0].topic = "state";
+    mqttsubscr[0].callback = taskLedUpdateStateMqtt;
 
-    mqttmngSubscribe(MQTT_MNG_COMP_2, "state", taskLedUpdateStateMqtt);
-    mqttmngSubscribe(MQTT_MNG_COMP_2, "rgb", taskLedUpdateRgbMqtt);
+    mqttsubscr[1].topic = "rgb";
+    mqttsubscr[1].callback = taskLedUpdateRgbMqtt;
+
+    mqttsubscrptr[0] = &mqttsubscr[0];
+    mqttsubscrptr[1] = &mqttsubscr[1];
+
+    mqttconfig.subscriptions = mqttsubscrptr;
+    mqttconfig.nSubscriptions = 2;
+
+    mqttconfig.name = "led233";
+    mqttconfig.type = "led";
+    mqttconfig.flags = "ri";
+
+    mqttmngAddComponent(MQTT_MNG_COMP_2, &mqttconfig);
+    while( mqttmngInitDone() != 0 );
 }
 //-----------------------------------------------------------------------------
 static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){

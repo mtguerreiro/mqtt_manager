@@ -3,16 +3,11 @@
 //=============================================================================
 #include "task_temperature.h"
 
-/* Kernel */
 #include "time.h"
-
-/* Device and drivers */
 #include "stdio.h"
 
 #include "mqttmngConfig.h"
 #include "mqttmng.h"
-
-#include "task_svmqtt.h"
 //=============================================================================
 
 //=============================================================================
@@ -25,6 +20,8 @@
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 static struct timespec t;
+
+static mqttmngConfig_t mqttconfig;
 //=============================================================================
 
 //=============================================================================
@@ -59,7 +56,13 @@ void* taskTemperature(void *param){
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitialize(void){
 
-    mqttmngAddComponent(MQTT_MNG_COMP_1, (const char*)"temp1", (const char*)"temperature", (const char*)0);
+    mqttconfig.name = (const char*)"temp1";
+    mqttconfig.type = (const char*)"temperature";
+    mqttconfig.flags = NULL;
+    mqttconfig.subscriptions = NULL;
+    mqttconfig.nSubscriptions = 0;
+
+    mqttmngAddComponent(MQTT_MNG_COMP_1, &mqttconfig);
     while( mqttmngInitDone() != 0 );
 
     t.tv_sec = (TASK_TEMPERATURE_CFG_PERIOD_MS) / 1000;
