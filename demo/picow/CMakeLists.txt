@@ -49,9 +49,6 @@ add_compile_options(
 cmake_path(SET SVMQTT_PATH NORMALIZE "${PROJECT_SOURCE_DIR}/../../")
 message("-- SVMQTT_PATH IS ${SVMQTT_PATH}")
 
-# Include MQTT library's source and header path variables.
-include( ${SVMQTT_PATH}/coreMQTT/mqttFilePaths.cmake )
-
 # Include subscription manager
 add_subdirectory(${SVMQTT_PATH} "${PROJECT_BINARY_DIR}/mqtt_manager")
 

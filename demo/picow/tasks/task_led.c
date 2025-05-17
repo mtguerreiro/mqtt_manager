@@ -16,12 +16,8 @@
 #include "tif/c/modules/led/led.h"
 #include "tif/c/hw/pico/ledHw.h"
 
-// #include "tif/c/drivers/modbus/modbushandle.h"
-
 #include "mqttmng.h"
 #include "mqttmngConfig.h"
-
-#include "task_svmqtt.h"
 //=============================================================================
 
 //=============================================================================
@@ -33,7 +29,9 @@
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-static SemaphoreHandle_t lock;
+mqttmngSubscrConfig_t mqttsubscr[2];
+mqttmngSubscrConfig_t *mqttsubscrptr[2];
+mqttmngConfig_t mqttconfig;
 //=============================================================================
 
 //=============================================================================
@@ -80,12 +78,24 @@ static void taskLedInitialize(void){
 
     ledInitialize(&ledConfig);
 
-	mqttmngAddComponent(MQTT_MNG_COMP_2, (const char*)"led233", (const char*)"led", (const char*)"ri");
-    while( mqttmngInitDone() != 0 );
+    mqttsubscr[0].topic = "state";
+    mqttsubscr[0].callback = taskLedUpdateStateMqtt;
 
-    mqttmngSubscribe(MQTT_MNG_COMP_2, "state", taskLedUpdateStateMqtt);
-    mqttmngSubscribe(MQTT_MNG_COMP_2, "rgb", taskLedUpdateRgbMqtt);
-    mqttmngSubscribe(MQTT_MNG_COMP_2, "intensity", taskLedUpdateIntensityMqtt);
+    mqttsubscr[1].topic = "rgb";
+    mqttsubscr[1].callback = taskLedUpdateRgbMqtt;
+
+    mqttsubscrptr[0] = &mqttsubscr[0];
+    mqttsubscrptr[1] = &mqttsubscr[1];
+
+    mqttconfig.subscriptions = mqttsubscrptr;
+    mqttconfig.nSubscriptions = 2;
+
+    mqttconfig.name = "led233";
+    mqttconfig.type = "led";
+    mqttconfig.flags = "ri";
+
+    mqttmngAddComponent(MQTT_MNG_COMP_2, &mqttconfig);
+    while( mqttmngInitDone() != 0 );
 }
 //-----------------------------------------------------------------------------
 static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
@@ -98,13 +108,14 @@ static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *p
     /* Suppress unused parameter warning when asserts are disabled in build. */
     ( void ) pContext;
 
-    printf( "Invoked led state callback." );
+    LogInfo( ("Invoked led state callback.") );
     taskLedUpdateState( *( (uint8_t *) pPublishInfo->pPayload ) );
 }
 //-----------------------------------------------------------------------------
 static void taskLedUpdateState(uint8_t state){
 
-    printf("Setting LED state to %d", state);
+    LogInfo( ("Setting LED state to %d", state) );
+
     if( state )
         ledSetIntensity(0, 4, 1000);
     else
@@ -120,7 +131,7 @@ static void taskLedUpdateRgbMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPu
     /* Suppress unused parameter warning when asserts are disabled in build. */
     ( void ) pContext;
 
-    printf( "Invoked led rgb callback." );
+    LogInfo( ("Invoked led rgb callback.") );
     
     taskLedUpdateRgb( (uint8_t *) pPublishInfo->pPayload );
 
@@ -130,18 +141,9 @@ static void taskLedUpdateRgb(uint8_t *data){
 
     mqttmngPayload_t payload;
 
-    printf("Setting LED color to %d %d %d", data[0], data[1], data[2]);
+    LogInfo( ("Setting LED color to %d %d %d", data[0], data[1], data[2]) );
 
     ledSetColor(0, data[0], data[1], data[2], 1000);
-    // if( taskSvmqttStatus() != 0 ) return;
-
-    // payload.data = (void *)&temp;
-    // payload.size = 2;
-    // payload.dup = 0;
-    // payload.qos = 0;
-    // payload.retain = 0;
-
-    // mqttmngPublish(MQTT_MNG_COMP_1, "temperature", &payload);
 }
 //-----------------------------------------------------------------------------
 static void taskLedUpdateIntensityMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
@@ -152,13 +154,11 @@ static void taskLedUpdateIntensityMqtt(MQTTContext_t *pContext, MQTTPublishInfo_
     /* Suppress unused parameter warning when asserts are disabled in build. */
     ( void ) pContext;
 
-    printf( "Invoked led intensity callback." );
+    LogInfo( ("Invoked led intensity callback.") );
 
     float duty = *((float *) pPublishInfo->pPayload);
     
-    printf("Duty: %.4f", duty);
-    //taskLedUpdateRgb( (uint8_t *) pPublishInfo->pPayload );
-
+    LogInfo( ("Duty: %.4f", duty) );
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

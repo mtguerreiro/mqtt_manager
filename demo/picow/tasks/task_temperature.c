@@ -16,12 +16,8 @@
 #include "tif/c/modules/temperature/temperature.h"
 #include "tif/c/hw/pico/temperatureHw.h"
 
-// #include "tif/c/drivers/modbus/modbushandle.h"
-
 #include "mqttmng.h"
 #include "mqttmngConfig.h"
-
-#include "task_svmqtt.h"
 //=============================================================================
 
 //=============================================================================
@@ -34,6 +30,8 @@
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 static SemaphoreHandle_t lock;
+
+static mqttmngConfig_t mqttconfig;
 //=============================================================================
 
 //=============================================================================
@@ -56,14 +54,17 @@ void taskTemperature(void *param){
     int32_t temp;
     taskTemperatureInitialize();
 
-    while(1){
+    temperatureUpdate(0, 1000);
 
-        temperatureUpdate(0, 1000);
+    while(1){
         vTaskDelay(3000);
+
         status = temperatureGet(0, &temp, 1000);
+        LogInfo( ("Temperature %d.", temp) );
+
         if( status == 0 ) taskTemperatureUpdateMqtt( (uint16_t)temp );
 
-        printf("Status: %d\tTemperature: %d\n\r", status, temp);
+        temperatureUpdate(0, 1000);
     }
 }
 //-----------------------------------------------------------------------------
@@ -74,9 +75,6 @@ void taskTemperature(void *param){
 //=============================================================================
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitialize(void){
-
- 	mqttmngAddComponent(MQTT_MNG_COMP_1, (const char*)"temp1", (const char*)"temperature", (const char*)0);
-    while( mqttmngInitDone() != 0 );
 
     taskTemperatureInitializeLock();
 
@@ -91,6 +89,15 @@ static void taskTemperatureInitialize(void){
     config.hwIf = 0;
 
     temperatureInitialize(&config);
+
+    mqttconfig.name = (const char*)"temp1";
+    mqttconfig.type = (const char*)"temperature";
+    mqttconfig.flags = NULL;
+    mqttconfig.subscriptions = NULL;
+    mqttconfig.nSubscriptions = 0;
+
+    mqttmngAddComponent(MQTT_MNG_COMP_1, &mqttconfig);
+    while( mqttmngInitDone() != 0 );
 }
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitializeLock(void){
@@ -113,8 +120,6 @@ static void taskTemperatureUnlock(void){
 static void taskTemperatureUpdateMqtt(uint16_t temp){
 
     mqttmngPayload_t payload;
-
-    if( taskSvmqttStatus() != 0 ) return;
 
     payload.data = (void *)&temp;
     payload.size = 2;

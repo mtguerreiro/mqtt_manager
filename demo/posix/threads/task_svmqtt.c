@@ -42,11 +42,7 @@ static void taskSvmqttUnlock(void);
 //-----------------------------------------------------------------------------
 void* taskSvmqtt(void *param){
 
-    LogInfo( ("Initializing SVMQTT...") );
-
     if( taskSvqmttInit() != 0 ) exit (-1);
-
-    LogInfo( ("SVMQTT initialized.") );
 
     while(1){
         mqttmngRun();
