@@ -22,6 +22,7 @@
 #include "task_svmqtt.h"
 #include "task_temperature.h"
 #include "task_blink.h"
+#include "task_led.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -193,17 +194,24 @@ void app_main(void)
     xTaskCreate(
         taskTemperature,
         "temperature",
-       TASK_TEMPERATURE_CONFIG_TASK_STACK_SIZE,
-      NULL,
-      TASK_TEMPERATURE_CONFIG_TASK_PRIO,
-     NULL );
+        TASK_TEMPERATURE_CONFIG_TASK_STACK_SIZE,
+        NULL,
+        TASK_TEMPERATURE_CONFIG_TASK_PRIO,
+        NULL );
 
     xTaskCreate(
         taskBlink,
         "blink",
-       TASK_BLINK_CONFIG_TASK_STACK_SIZE,
-      NULL,
-      TASK_BLINK_CONFIG_TASK_PRIO,
-     NULL );
+        TASK_BLINK_CONFIG_TASK_STACK_SIZE,
+        NULL,
+        TASK_BLINK_CONFIG_TASK_PRIO,
+        NULL );
 
+    xTaskCreate(
+        taskLed,
+        "led",
+        TASK_LED_CONFIG_TASK_STACK_SIZE,
+        NULL,
+        TASK_LED_CONFIG_TASK_PRIO,
+        NULL );
 }

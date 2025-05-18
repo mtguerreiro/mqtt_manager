@@ -39,6 +39,7 @@
 
 typedef enum{
     MQTT_MNG_COMP_1,
+    MQTT_MNG_COMP_2,
     MQTT_MNG_COMP_END
 }mqttmngComponents_t;
 
