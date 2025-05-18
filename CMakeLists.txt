@@ -20,7 +20,7 @@ if (PLATFORM_NAME STREQUAL "esp32")
         INCLUDE_DIRS
             . 
             mqtt_manager
-            ${CMAKE_SOURCE_DIR}/main
+            ${CMAKE_SOURCE_DIR}
             ${MQTT_INCLUDE_PUBLIC_DIRS}
             coreMQTT/source/include
             logging
