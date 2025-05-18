@@ -15,9 +15,8 @@ elseif (PLATFORM_NAME STREQUAL "esp32")
         SRCS            ${SRCS}
         INCLUDE_DIRS    "."
     PRIV_REQUIRES
-        esp_timer   # <-- add this line
+        esp_timer
     )
-#add_subdirectory(esp32)
 else ()
     message("-- SVMQTT_PLATFORM: platform ${PLATFORM_NAME} not supported for this example.")
 endif()

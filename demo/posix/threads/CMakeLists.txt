@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 3.12)
 
 add_library(
     threads
-        task_blink.c
-        task_svmqtt.c
-        task_temperature.c
-        task_led.c
+    task_blink.c
+    task_svmqtt.c
+    task_temperature.c
+    task_led.c
 )
 
 target_link_libraries(
@@ -17,6 +17,6 @@ target_link_libraries(
 target_include_directories(
     threads
     PRIVATE
-    ${PROJECT_SOURCE_DIR}
-    ${SVMQTT_PATH}/logging
+    ${CMAKE_SOURCE_DIR}
+    ${MQTT_MNG_PATH}/logging
 )

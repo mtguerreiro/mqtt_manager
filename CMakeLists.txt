@@ -69,7 +69,7 @@ else()
     target_include_directories(
         mqtt_manager
         PRIVATE
-        ${PROJECT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}
         ${MQTT_INCLUDE_PUBLIC_DIRS}
         platform/transport/
         platform/clock/

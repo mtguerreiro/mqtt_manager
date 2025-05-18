@@ -5,7 +5,7 @@ add_library(plaintext_transport plaintext_transport.c sockets_impl.c)
 target_include_directories(
     plaintext_transport PRIVATE
     "${PROJECT_SOURCE_DIR}"
-    "${SVMQTT_PATH}/logging"
+    "../../../logging"
     "../"
 )
 
