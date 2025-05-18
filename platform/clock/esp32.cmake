@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.12)
 
+# Detect ESP-IDF and force platform name
 if(DEFINED ENV{IDF_PATH} OR "$ENV{CMAKE_SYSTEM_NAME}" STREQUAL "ESP-IDF")
     set(PLATFORM_NAME "esp32")
-elseif(NOT DEFINED PLATFORM_NAME)
-    set(PLATFORM_NAME "posix")
-    message("-- MQTT_MNG: Setting platform to posix because none was specified.")
 endif()
 
 if( PLATFORM_NAME STREQUAL "posix")
@@ -12,8 +10,14 @@ if( PLATFORM_NAME STREQUAL "posix")
 elseif (PLATFORM_NAME STREQUAL "picow")
     add_subdirectory(picow)
 elseif (PLATFORM_NAME STREQUAL "esp32")
-    include(${CMAKE_CURRENT_LIST_DIR}/esp32.cmake)
+    set(SRCS esp32/clock_esp32.c)    
+    idf_component_register(
+        SRCS            ${SRCS}
+        INCLUDE_DIRS    "."
+    PRIV_REQUIRES
+        esp_timer
+    )
 else ()
-    message("-- MQTT_MNG: platform ${PLATFORM_NAME} not supported.")
+    message("-- SVMQTT_PLATFORM: platform ${PLATFORM_NAME} not supported for this example.")
 endif()
 
