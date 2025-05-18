@@ -46,11 +46,11 @@ add_compile_options(
 )
 
 # Include platform
-cmake_path(SET SVMQTT_PATH NORMALIZE "${PROJECT_SOURCE_DIR}/../../")
-message("-- SVMQTT_PATH IS ${SVMQTT_PATH}")
+cmake_path(SET MQTT_MNG_PATH NORMALIZE "${PROJECT_SOURCE_DIR}/../../")
+message("-- MQTT_MNG_PATH IS ${MQTT_MNG_PATH}")
 
 # Include subscription manager
-add_subdirectory(${SVMQTT_PATH} "${PROJECT_BINARY_DIR}/mqtt_manager")
+add_subdirectory(${MQTT_MNG_PATH} "${PROJECT_BINARY_DIR}/mqtt_manager")
 
 # Libraries
 add_subdirectory(${TIF_PATH}/tif "${PROJECT_BINARY_DIR}/tif")
@@ -65,7 +65,7 @@ target_include_directories(${DEMO_NAME} PUBLIC
         ${PROJECT_SOURCE_DIR}
         ${CMAKE_CURRENT_LIST_DIR}
         "${TIF_PATH}"
-        ${SVMQTT_PATH}/logging
+        ${MQTT_MNG_PATH}/logging
         )
 
 target_link_libraries(

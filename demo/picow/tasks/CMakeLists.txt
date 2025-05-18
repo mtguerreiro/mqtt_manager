@@ -30,5 +30,5 @@ target_include_directories(
     ${DEMO_NAME_TASKS} PRIVATE 
     "../"
     "${TIF_PATH}"
-    ${SVMQTT_PATH}/logging
+    ${MQTT_MNG_PATH}/logging
 )
