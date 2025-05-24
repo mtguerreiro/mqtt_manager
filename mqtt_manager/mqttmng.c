@@ -263,13 +263,14 @@ void mqttmngRun(void){
 	while( 1 ){
 
         if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) continue;
-
+        
         status = MQTT_ProcessLoop( &mqttmng.mqttContext );
 
         if( (status != MQTTSuccess) && (status != MQTTNeedMoreBytes) ){
             LogWarn( ("Seems like there was a problem with the connection. Will try to reset it..."));
             mqttmngResetSession();
         }
+
         mqttmngUnlock();
 
         Clock_SleepMs(MQTT_MNG_PROC_DELAY_MS);
@@ -316,7 +317,10 @@ int32_t mqttmngPublish(uint32_t id, const char *topic, mqttmngPayload_t *payload
         topic        
     );
 
-    if( (len + 1) >= MQTT_MNG_WRITE_BUFFER_SIZE ) return -1;
+    if( (len + 1) >= MQTT_MNG_WRITE_BUFFER_SIZE ){
+        mqttmngUnlock();
+        return -1;    
+    }
 
     status = mqttmngPublishBare(buf, payload);
 
