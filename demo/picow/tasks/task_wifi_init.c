@@ -17,8 +17,7 @@
 #include "task_svmqtt.h"
 #include "task_blink.h"
 #include "task_temperature.h"
-#include "task_led.h"
-#include "task_wdt.h"
+#include "task_led.h"]
 
 /* SVMQTT */
 #include "mqttmng.h"
@@ -86,14 +85,6 @@ void taskWifiInit(void *param){
         NULL,
         TASK_LED_CONFIG_TASK_PRIO,
         NULL );
-
-    // xTaskCreate(
-    //     taskWdt,
-    //     "wdt",
-    //     TASK_WDT_CONFIG_TASK_STACK_SIZE,
-    //     NULL,
-    //     TASK_WDT_CONFIG_TASK_PRIO,
-    //     NULL );   
 
     vTaskDelete( NULL );
 

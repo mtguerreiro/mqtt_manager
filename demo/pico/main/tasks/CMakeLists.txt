@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 add_library(
     tasks
+    task_led.c
     task_blink.c
     task_temperature.c
     task_wiznet_init.c

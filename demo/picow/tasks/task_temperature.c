@@ -13,8 +13,8 @@
 #include "pico/stdlib.h"
 
 /* Temperature module */
-#include "tif/c/modules/temperature/temperature.h"
-#include "tif/c/hw/pico/temperatureHw.h"
+#include "mdrivers/temperature/temperature.h"
+#include "mhw/pico/temperatureHw.h"
 
 #include "mqttmng.h"
 #include "mqttmngConfig.h"
@@ -86,7 +86,6 @@ static void taskTemperatureInitialize(void){
     config.hwGetNumberSensors = temperatureHwGetNumberSensors;
     config.lock = taskTemperatureLock;
     config.unlock = taskTemperatureUnlock;
-    config.hwIf = 0;
 
     temperatureInitialize(&config);
 

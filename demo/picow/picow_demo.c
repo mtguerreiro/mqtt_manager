@@ -16,7 +16,7 @@
 #include "tasks/task_led.h"
 #include "tasks/task_wifi_init.h"
 
-#include "tif/c/hw/pico/pwm_irq_handler.h"
+#include "mhw/pico/pwm_irq_handler.h"
 //=============================================================================
 
 //=============================================================================

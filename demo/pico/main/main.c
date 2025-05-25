@@ -9,6 +9,7 @@
 /* Tasks */
 #include "tasks/task_blink.h"
 #include "tasks/task_temperature.h"
+#include "tasks/task_led.h"
 #include "tasks/task_wiznet_init.h"
 
 /* FreeRTOS */
@@ -63,6 +64,14 @@ int main(void){
         NULL,                                       /* Parameter passed into the task. */
         TASK_TEMPERATURE_CONFIG_TASK_PRIO,          /* Priority at which the task is created. */
         NULL );                                     /* Used to pass out the created task's handle. */
+
+    xTaskCreate(
+        taskLed,                                    /* Function that implements the task. */
+        "led",                                      /* Text name for the task. */
+        TASK_LED_CONFIG_TASK_STACK_SIZE,            /* Stack size in words, not bytes. */
+        NULL,                                       /* Parameter passed into the task. */
+        TASK_LED_CONFIG_TASK_PRIO,                  /* Priority at which the task is created. */
+        NULL );   
 
     xTaskCreate(
         taskWiznetInit,                             /* Function that implements the task. */
