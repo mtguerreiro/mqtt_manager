@@ -15,6 +15,7 @@
 /* Led module */
 #include "mdrivers/led/led.h"
 #include "mhw/pico/led/ledws2812.h"
+#include "mhw/pico/led/ledpwm.h"
 
 #include "mqttmng.h"
 #include "mqttmngConfig.h"
@@ -38,6 +39,8 @@ mqttmngConfig_t mqttconfig;
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
 static void taskLedInitialize(void);
+static void taskLedInitializeHwWs2812(void);
+static void taskLedInitializeHwPwm(void);
 static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
 static void taskLedUpdateState(uint8_t state);
 static void taskLedUpdateRgbMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
@@ -65,6 +68,12 @@ void taskLed(void *param){
 //-----------------------------------------------------------------------------
 static void taskLedInitialize(void){
 
+    //taskLedInitializeHwWs2812();
+    taskLedInitializeHwPwm();
+}
+//-----------------------------------------------------------------------------
+static void taskLedInitializeHwWs2812(void){
+
     ledws2812Initialize();
 
     ledConfig_t ledConfig;
@@ -81,7 +90,7 @@ static void taskLedInitialize(void){
     mqttsubscr[0].callback = taskLedUpdateStateMqtt;
 
     mqttsubscr[1].topic = "rgb";
-    mqttsubscr[1].callback = taskLedUpdateRgbMqtt;
+    mqttsubscr[1].callback = taskLedUpdateIntensityMqtt;
 
     mqttsubscrptr[0] = &mqttsubscr[0];
     mqttsubscrptr[1] = &mqttsubscr[1];
@@ -92,6 +101,40 @@ static void taskLedInitialize(void){
     mqttconfig.name = "led233";
     mqttconfig.type = "led";
     mqttconfig.flags = "ri";
+
+    mqttmngAddComponent(MQTT_MNG_COMP_2, &mqttconfig);
+    while( mqttmngInitDone() != 0 );
+}
+//-----------------------------------------------------------------------------
+static void taskLedInitializeHwPwm(void){
+
+    ledpwmInitialize();
+
+    ledConfig_t ledConfig;
+
+    ledConfig.lock = 0;
+    ledConfig.unlock = 0;
+    ledConfig.hwSetColor = 0;
+    ledConfig.hwSetIntensity = ledpwmSetIntensity;
+    ledConfig.hwGetNumberLeds = ledpwmGetNumberLeds;
+
+    ledInitialize(&ledConfig);
+
+    mqttsubscr[0].topic = "state";
+    mqttsubscr[0].callback = taskLedUpdateStateMqtt;
+
+    mqttsubscr[1].topic = "intensity";
+    mqttsubscr[1].callback = taskLedUpdateIntensityMqtt;
+
+    mqttsubscrptr[0] = &mqttsubscr[0];
+    mqttsubscrptr[1] = &mqttsubscr[1];
+
+    mqttconfig.subscriptions = mqttsubscrptr;
+    mqttconfig.nSubscriptions = 2;
+
+    mqttconfig.name = "led233";
+    mqttconfig.type = "led";
+    mqttconfig.flags = "i";
 
     mqttmngAddComponent(MQTT_MNG_COMP_2, &mqttconfig);
     while( mqttmngInitDone() != 0 );
@@ -156,6 +199,8 @@ static void taskLedUpdateIntensityMqtt(MQTTContext_t *pContext, MQTTPublishInfo_
     LogInfo( ("Invoked led intensity callback.") );
 
     float duty = *((float *) pPublishInfo->pPayload);
+
+    ledSetIntensity(0, (uint8_t)duty, 0);
     
     LogInfo( ("Duty: %.4f", duty) );
 }
