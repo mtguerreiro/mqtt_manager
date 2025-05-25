@@ -18,7 +18,7 @@
 /* Pico includes */
 #include "pico/stdlib.h"
 
-#include "tif/c/hw/pico/pwm_irq_handler.h"
+#include "mhw/pico/pwm_irq_handler.h"
 
 //=============================================================================
 

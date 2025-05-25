@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.12)
 
 set(PLATFORM_NAME "pico")
-set(FREERTOS_KERNEL_PATH "/home/marco/projects/freertos")
-set(TIF_PATH "/home/marco/projects")
+
+cmake_path(SET PROJECTS_PATH NORMALIZE "${CMAKE_CURRENT_LIST_DIR}/../../..")
+set(FREERTOS_KERNEL_PATH "${PROJECTS_PATH}/freertos")
+set(MDRIVERS_PATH "${PROJECTS_PATH}/mdrivers")
+set(MQTT_MNG_PATH "${PROJECTS_PATH}/mqtt_manager")
 
 # Pull in SDK (must be before project)
 include(pico_sdk_import.cmake)
@@ -17,11 +20,7 @@ if (PICO_SDK_VERSION_STRING VERSION_LESS "1.3.0")
     message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.3.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
 endif()
 
-message("Raspberry Pi Pico SDK version is ${PICO_SDK_VERSION_STRING}")
-
 set(PICO_EXAMPLES_PATH ${PROJECT_SOURCE_DIR})
-set(TIF_PATH ${TIF_PATH})
-message("TIF path is ${TIF_PATH}")
 
 # Initialize the SDK
 pico_sdk_init()
@@ -35,13 +34,7 @@ add_compile_options(-Wall
         )
 
 # Libraries
-add_subdirectory("${TIF_PATH}/tif" "${PROJECT_BINARY_DIR}/tif")
-#include_directories($ENV{TIF_PATH})
-
-cmake_path(SET MQTT_MNG_PATH NORMALIZE "${PROJECT_SOURCE_DIR}/../../")
-message("-- MQTT_MNG_PATH IS ${MQTT_MNG_PATH}")
-
-# Include subscription manager
+add_subdirectory(${MDRIVERS_PATH} "${PROJECT_BINARY_DIR}/mdrivers")
 add_subdirectory(${MQTT_MNG_PATH} "${PROJECT_BINARY_DIR}/mqtt_manager")
 
 # Add projects

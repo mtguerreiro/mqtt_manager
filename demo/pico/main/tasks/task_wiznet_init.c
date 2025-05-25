@@ -13,12 +13,12 @@
 #include "pico/stdlib.h"
 
 /* Wiznet drivers */
-#include "tif/c/drivers/wiznet/dhcp.h"
-#include "tif/c/drivers/wiznet/socket.h"
-#include "tif/c/drivers/wiznet/wizchip_conf.h"
+#include "mdrivers/wiznet/dhcp.h"
+#include "mdrivers/wiznet/socket.h"
+#include "mdrivers/wiznet/wizchip_conf.h"
 
 /* Pico initialzation */
-#include "tif/c/hw/pico/wiznet_init.h"
+#include "mhw/pico/wiznet_init.h"
 
 /* Includes blink task to update blinking rate according to connection status */
 #include "task_blink.h"
