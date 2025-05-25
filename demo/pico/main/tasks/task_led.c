@@ -90,7 +90,7 @@ static void taskLedInitializeHwWs2812(void){
     mqttsubscr[0].callback = taskLedUpdateStateMqtt;
 
     mqttsubscr[1].topic = "rgb";
-    mqttsubscr[1].callback = taskLedUpdateIntensityMqtt;
+    mqttsubscr[1].callback = taskLedUpdateRgbMqtt;
 
     mqttsubscrptr[0] = &mqttsubscr[0];
     mqttsubscrptr[1] = &mqttsubscr[1];
