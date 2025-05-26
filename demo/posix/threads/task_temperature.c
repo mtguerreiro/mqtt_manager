@@ -56,14 +56,25 @@ void* taskTemperature(void *param){
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitialize(void){
 
-    mqttconfig.name = (const char*)"temp1";
-    mqttconfig.type = (const char*)"temperature";
-    mqttconfig.flags = NULL;
-    mqttconfig.subscriptions = NULL;
-    mqttconfig.nSubscriptions = 0;
+    // mqttconfig.name = (const char*)"temp1";
+    // mqttconfig.type = (const char*)"temperature";
+    // mqttconfig.flags = NULL;
+    // mqttconfig.subscriptions = NULL;
+    // mqttconfig.nSubscriptions = 0;
 
-    mqttmngAddComponent(MQTT_MNG_COMP_1, &mqttconfig);
+    // mqttmngAddComponent(MQTT_MNG_COMP_1, &mqttconfig);
+    // while( mqttmngInitDone() != 0 );
+
+    //     mqttconfig.name = (const char*)"temp1";
+    // mqttconfig.type = (const char*)"temperature";
+    // mqttconfig.flags = NULL;
+    // mqttconfig.subscriptions = NULL;
+    // mqttconfig.nSubscriptions = 0;
+
+    // mqttmngAddComponent(MQTT_MNG_COMP_1, &mqttconfig);
     while( mqttmngInitDone() != 0 );
+
+    mqttmngPublishComponent("temp1", "temperature", NULL);
 
     t.tv_sec = (TASK_TEMPERATURE_CFG_PERIOD_MS) / 1000;
     t.tv_nsec = (TASK_TEMPERATURE_CFG_PERIOD_MS) * 1000000U - t.tv_sec * 1000000000U;
@@ -80,7 +91,7 @@ static void taskTemperatureUpdateMqtt(uint16_t temp){
     payload.dup = 0;
     payload.retain = 0;
 
-    mqttmngPublish(MQTT_MNG_COMP_1, "temperature", &payload);
+    mqttmngPublish(MQTT_MNG_CONFIG_DEV_ID "/temp1/temperature", &payload);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

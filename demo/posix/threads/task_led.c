@@ -46,24 +46,29 @@ void* taskLed(void *param){
 //-----------------------------------------------------------------------------
 static void taskLedInitialize(void){
 
-    mqttsubscr[0].topic = "state";
-    mqttsubscr[0].callback = taskLedUpdateStateMqtt;
+    // mqttsubscr[0].topic = "state";
+    // mqttsubscr[0].callback = taskLedUpdateStateMqtt;
 
-    mqttsubscr[1].topic = "rgb";
-    mqttsubscr[1].callback = taskLedUpdateRgbMqtt;
+    // mqttsubscr[1].topic = "rgb";
+    // mqttsubscr[1].callback = taskLedUpdateRgbMqtt;
 
-    mqttsubscrptr[0] = &mqttsubscr[0];
-    mqttsubscrptr[1] = &mqttsubscr[1];
+    // mqttsubscrptr[0] = &mqttsubscr[0];
+    // mqttsubscrptr[1] = &mqttsubscr[1];
 
-    mqttconfig.subscriptions = mqttsubscrptr;
-    mqttconfig.nSubscriptions = 2;
+    // mqttconfig.subscriptions = mqttsubscrptr;
+    // mqttconfig.nSubscriptions = 2;
 
-    mqttconfig.name = "led233";
-    mqttconfig.type = "led";
-    mqttconfig.flags = "ri";
+    // mqttconfig.name = "led233";
+    // mqttconfig.type = "led";
+    // mqttconfig.flags = "ri";
 
-    mqttmngAddComponent(MQTT_MNG_COMP_2, &mqttconfig);
+    // mqttmngAddComponent(MQTT_MNG_COMP_2, &mqttconfig);
+    // while( mqttmngInitDone() != 0 );
+
     while( mqttmngInitDone() != 0 );
+    mqttmngPublishComponent("led223", "led", "ri");
+    mqttmngSubscribe(MQTT_MNG_CONFIG_DEV_ID "/led233/state", taskLedUpdateStateMqtt);
+    mqttmngSubscribe(MQTT_MNG_CONFIG_DEV_ID "/led233/rgb", taskLedUpdateRgbMqtt);
 }
 //-----------------------------------------------------------------------------
 static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){

@@ -24,12 +24,12 @@ int main(int argc, char** argv){
 
     pthread_create( &taskBlinkHandle, NULL, taskBlink, NULL );
     pthread_create( &taskSvmqttHandle, NULL, taskSvmqtt, NULL );
-    pthread_create( &taskTemperatureHandle, NULL, taskTemperature, NULL );
+    // pthread_create( &taskTemperatureHandle, NULL, taskTemperature, NULL );
     pthread_create( &taskLedHandle, NULL, taskLed, NULL );
 
     pthread_join( taskBlinkHandle, NULL );
     pthread_join( taskSvmqttHandle, NULL );
-    pthread_join( taskTemperatureHandle, NULL );
+    // pthread_join( taskTemperatureHandle, NULL );
     pthread_join( taskLedHandle, NULL );
 
 	exit( 0 );
