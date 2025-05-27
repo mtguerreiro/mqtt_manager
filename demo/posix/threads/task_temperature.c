@@ -13,6 +13,12 @@
 //=============================================================================
 /*--------------------------------- Defines ---------------------------------*/
 //=============================================================================
+#define TEMP_CFG_MQTT_COMP_NAME     "temp1"
+#define TEMP_CFG_MQTT_COMP_TYPE     "temperature"
+#define TEMP_CFG_MQTT_COMP_FLAGS    NULL
+
+#define TEMP_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" TEMP_CFG_MQTT_COMP_NAME
+
 #define TASK_TEMPERATURE_CFG_PERIOD_MS      3000
 //=============================================================================
 
@@ -26,7 +32,7 @@ static struct timespec t;
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
 static void taskTemperatureInitialize(void);
-static void taskTemperatureUpdateMqtt(uint16_t temp);
+static void taskTemperatureMqttUpdate(uint16_t temp);
 //=============================================================================
 
 //=============================================================================
@@ -40,7 +46,7 @@ void* taskTemperature(void *param){
     while(1){
 
         nanosleep(&t, NULL);
-        taskTemperatureUpdateMqtt( 20 );
+        taskTemperatureMqttUpdate( 20 );
     }
 }
 //-----------------------------------------------------------------------------
@@ -54,7 +60,11 @@ static void taskTemperatureInitialize(void){
 
     while( mqttmngInitDone() != 0 );
 
-    mqttmngPublishComponent("temp1", "temperature", NULL);
+    mqttmngPublishComponent(
+        TEMP_CFG_MQTT_COMP_NAME,
+        TEMP_CFG_MQTT_COMP_TYPE,
+        TEMP_CFG_MQTT_COMP_FLAGS
+    );
 
     t.tv_sec = (TASK_TEMPERATURE_CFG_PERIOD_MS) / 1000;
     t.tv_nsec = (TASK_TEMPERATURE_CFG_PERIOD_MS) * 1000000U - t.tv_sec * 1000000000U;
@@ -62,7 +72,7 @@ static void taskTemperatureInitialize(void){
     LogInfo( ("Running temperature task with. Timespec: %lu (s), %lu (ns).", t.tv_sec, t.tv_nsec) );
 }
 //-----------------------------------------------------------------------------
-static void taskTemperatureUpdateMqtt(uint16_t temp){
+static void taskTemperatureMqttUpdate(uint16_t temp){
 
     mqttmngPayload_t payload;
 
@@ -71,7 +81,7 @@ static void taskTemperatureUpdateMqtt(uint16_t temp){
     payload.dup = 0;
     payload.retain = 0;
 
-    mqttmngPublish(MQTT_MNG_CONFIG_DEV_ID "/temp1/temperature", &payload);
+    mqttmngPublish(TEMP_CFG_MQTT_COMP_ID "/temperature", &payload);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

@@ -2,7 +2,7 @@
 //=============================================================================
 /*-------------------------------- Includes ---------------------------------*/
 //=============================================================================
-#include "task_svmqtt.h"
+#include "task_mqtt_mng.h"
 
 #include "stdlib.h"
 
@@ -30,19 +30,19 @@ pthread_mutex_t mutex;
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
-static int32_t taskSvqmttInit(void);
-static int32_t taskSvmqttInitLock(void);
-static int32_t taskSvmqttLock(uint32_t timeout);
-static void taskSvmqttUnlock(void);
+static int32_t taskMqttmngInit(void);
+static int32_t taskMqttmngInitLock(void);
+static int32_t taskMqttmngLock(uint32_t timeout);
+static void taskMqttmngUnlock(void);
 //=============================================================================
 
 //=============================================================================
 /*---------------------------------- Task -----------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-void* taskSvmqtt(void *param){
+void* taskMqttmng(void *param){
 
-    if( taskSvqmttInit() != 0 ) exit (-1);
+    if( taskMqttmngInit() != 0 ) exit (-1);
 
     while(1){
         mqttmngRun();
@@ -55,18 +55,18 @@ void* taskSvmqtt(void *param){
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-static int32_t taskSvqmttInit(void){
+static int32_t taskMqttmngInit(void){
     
     int32_t status;
 
-    taskSvmqttInitLock();
+    taskMqttmngInitLock();
 
-    status = mqttmngInit(taskSvmqttLock, taskSvmqttUnlock);
+    status = mqttmngInit(taskMqttmngLock, taskMqttmngUnlock);
 
     return status;
 }
 //-----------------------------------------------------------------------------
-static int32_t taskSvmqttInitLock(void){
+static int32_t taskMqttmngInitLock(void){
 
     if( pthread_mutex_init(&mutex, NULL) != 0 ){
         LogInfo( ("Failed to initialize mutex.\n\r") );
@@ -76,7 +76,7 @@ static int32_t taskSvmqttInitLock(void){
     return 0;
 }
 //-----------------------------------------------------------------------------
-static int32_t taskSvmqttLock(uint32_t timeout){
+static int32_t taskMqttmngLock(uint32_t timeout){
 
     struct timespec t;
     unsigned long nsec;
@@ -99,7 +99,7 @@ static int32_t taskSvmqttLock(uint32_t timeout){
     return 0;
 }
 //-----------------------------------------------------------------------------
-static void taskSvmqttUnlock(void){
+static void taskMqttmngUnlock(void){
 
     pthread_mutex_unlock( &mutex );
 }

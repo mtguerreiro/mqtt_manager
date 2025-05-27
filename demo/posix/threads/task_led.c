@@ -10,19 +10,22 @@
 //=============================================================================
 
 //=============================================================================
-/*--------------------------------- Globals ---------------------------------*/
+/*------------------------------- Definitions -------------------------------*/
 //=============================================================================
+#define LED_CFG_MQTT_COMP_NAME  "led223"
+#define LED_CFG_MQTT_COMP_TYPE  "led"
+#define LED_CFG_MQTT_COMP_FLAGS "ri"
 
+#define LED_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
 static void taskLedInitialize(void);
-static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
-static void taskLedUpdateState(uint8_t state);
-static void taskLedUpdateRgbMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
-static void taskLedUpdateRgb(uint8_t *data);
+static void taskLedMqttUpdateState(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
+static void taskLedMqttUpdateRgb(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
+static void taskLedMqttUpdateIntensity(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo);
 //=============================================================================
 
 //=============================================================================
@@ -45,36 +48,45 @@ void* taskLed(void *param){
 static void taskLedInitialize(void){
 
     while( mqttmngInitDone() != 0 );
-    mqttmngPublishComponent("led223", "led", "ri");
-    mqttmngSubscribe(MQTT_MNG_CONFIG_DEV_ID "/led223/state", taskLedUpdateStateMqtt);
-    mqttmngSubscribe(MQTT_MNG_CONFIG_DEV_ID "/led223/rgb", taskLedUpdateRgbMqtt);
+    mqttmngPublishComponent(
+        LED_CFG_MQTT_COMP_NAME,
+        LED_CFG_MQTT_COMP_TYPE,
+        LED_CFG_MQTT_COMP_FLAGS
+    );
+
+    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/state", taskLedMqttUpdateState);
+    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/rgb", taskLedMqttUpdateRgb);
+    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/intensity", taskLedMqttUpdateIntensity);
 }
 //-----------------------------------------------------------------------------
-static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
-
-    ( void ) pContext;
-
-    LogInfo( ("Invoked led state callback.") );
-    taskLedUpdateState( *( (uint8_t *) pPublishInfo->pPayload ) );
-}
-//-----------------------------------------------------------------------------
-static void taskLedUpdateState(uint8_t state){
-
-    LogInfo( ("Setting LED state to %d", state) );
-}
-//-----------------------------------------------------------------------------
-static void taskLedUpdateRgbMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
-
-    ( void ) pContext;
-
-    LogInfo( ("Invoked led rgb callback.") );
+static void taskLedMqttUpdateState(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
     
-    taskLedUpdateRgb( (uint8_t *) pPublishInfo->pPayload );
+    ( void ) pContext;
+    uint8_t state;
+    
+    state = *( (uint8_t *) pPublishInfo->pPayload );
+
+    LogInfo( ("Invoked led state callback with state %d.", state) );
 }
 //-----------------------------------------------------------------------------
-static void taskLedUpdateRgb(uint8_t *data){
+static void taskLedMqttUpdateRgb(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
 
-    LogInfo( ("Setting LED color to %d %d %d", data[0], data[1], data[2]) );
+    ( void ) pContext;
+    uint8_t *p;
+    
+    p = (uint8_t *) pPublishInfo->pPayload;
+
+    LogInfo( ("Invoked led rgb callback with RGB: %d %d %d.", p[0], p[1], p[2]) );
+}
+//-----------------------------------------------------------------------------
+static void taskLedMqttUpdateIntensity(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
+
+    ( void ) pContext;
+    uint8_t intensity;
+    
+    intensity = *( (uint8_t *) pPublishInfo->pPayload );
+
+    LogInfo( ("Invoked led intensity callback with intensity %d.", intensity) );
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
