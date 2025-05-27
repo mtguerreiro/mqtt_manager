@@ -20,8 +20,6 @@
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 static struct timespec t;
-
-static mqttmngConfig_t mqttconfig;
 //=============================================================================
 
 //=============================================================================
@@ -37,8 +35,6 @@ static void taskTemperatureUpdateMqtt(uint16_t temp);
 //-----------------------------------------------------------------------------
 void* taskTemperature(void *param){
 
-    int32_t status;
-    int32_t temp;
     taskTemperatureInitialize();
 
     while(1){
@@ -56,22 +52,6 @@ void* taskTemperature(void *param){
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitialize(void){
 
-    // mqttconfig.name = (const char*)"temp1";
-    // mqttconfig.type = (const char*)"temperature";
-    // mqttconfig.flags = NULL;
-    // mqttconfig.subscriptions = NULL;
-    // mqttconfig.nSubscriptions = 0;
-
-    // mqttmngAddComponent(MQTT_MNG_COMP_1, &mqttconfig);
-    // while( mqttmngInitDone() != 0 );
-
-    //     mqttconfig.name = (const char*)"temp1";
-    // mqttconfig.type = (const char*)"temperature";
-    // mqttconfig.flags = NULL;
-    // mqttconfig.subscriptions = NULL;
-    // mqttconfig.nSubscriptions = 0;
-
-    // mqttmngAddComponent(MQTT_MNG_COMP_1, &mqttconfig);
     while( mqttmngInitDone() != 0 );
 
     mqttmngPublishComponent("temp1", "temperature", NULL);

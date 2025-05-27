@@ -12,9 +12,7 @@
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-mqttmngSubscrConfig_t mqttsubscr[2];
-mqttmngSubscrConfig_t *mqttsubscrptr[2];
-mqttmngConfig_t mqttconfig;
+
 //=============================================================================
 
 //=============================================================================
@@ -46,34 +44,13 @@ void* taskLed(void *param){
 //-----------------------------------------------------------------------------
 static void taskLedInitialize(void){
 
-    // mqttsubscr[0].topic = "state";
-    // mqttsubscr[0].callback = taskLedUpdateStateMqtt;
-
-    // mqttsubscr[1].topic = "rgb";
-    // mqttsubscr[1].callback = taskLedUpdateRgbMqtt;
-
-    // mqttsubscrptr[0] = &mqttsubscr[0];
-    // mqttsubscrptr[1] = &mqttsubscr[1];
-
-    // mqttconfig.subscriptions = mqttsubscrptr;
-    // mqttconfig.nSubscriptions = 2;
-
-    // mqttconfig.name = "led233";
-    // mqttconfig.type = "led";
-    // mqttconfig.flags = "ri";
-
-    // mqttmngAddComponent(MQTT_MNG_COMP_2, &mqttconfig);
-    // while( mqttmngInitDone() != 0 );
-
     while( mqttmngInitDone() != 0 );
     mqttmngPublishComponent("led223", "led", "ri");
-    mqttmngSubscribe(MQTT_MNG_CONFIG_DEV_ID "/led233/state", taskLedUpdateStateMqtt);
-    mqttmngSubscribe(MQTT_MNG_CONFIG_DEV_ID "/led233/rgb", taskLedUpdateRgbMqtt);
+    mqttmngSubscribe(MQTT_MNG_CONFIG_DEV_ID "/led223/state", taskLedUpdateStateMqtt);
+    mqttmngSubscribe(MQTT_MNG_CONFIG_DEV_ID "/led223/rgb", taskLedUpdateRgbMqtt);
 }
 //-----------------------------------------------------------------------------
 static void taskLedUpdateStateMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){
-
-    uint8_t state;
 
     ( void ) pContext;
 
@@ -96,8 +73,6 @@ static void taskLedUpdateRgbMqtt(MQTTContext_t *pContext, MQTTPublishInfo_t *pPu
 }
 //-----------------------------------------------------------------------------
 static void taskLedUpdateRgb(uint8_t *data){
-
-    mqttmngPayload_t payload;
 
     LogInfo( ("Setting LED color to %d %d %d", data[0], data[1], data[2]) );
 }

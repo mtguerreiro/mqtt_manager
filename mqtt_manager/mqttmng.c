@@ -149,16 +149,18 @@ struct NetworkContext
     PlaintextParams_t * pParams;
 };
 
-#define MQTT_MNG_LOCK_TIMEOUT_MS    2000
-#define MQTT_MNG_PROC_DELAY_MS      50
-#define MQTT_MNG_SUBS_BUFFER_SIZE   128
-#define MQTT_MNG_WRITE_BUFFER_SIZE  128
-#define MQTT_MNG_READ_BUFFER_SIZE   128
+#define MQTT_MNG_LOCK_TIMEOUT_MS            2000
+#define MQTT_MNG_PROC_DELAY_MS              50
+#define MQTT_MNG_SUBS_COMP_BUF_SIZE         64
+#define MQTT_MNG_SUBS_COMP_MAX_TOPIC_SIZE   64
 
 typedef struct{
 
     const char *subsTopics[MQTT_MNG_CONFIG_MAX_SUBS];
     uint32_t nSubs;
+
+    char components[MQTT_MNG_SUBS_COMP_BUF_SIZE];
+    uint32_t componentsLen;
 
     MQTTContext_t mqttContext;
     NetworkContext_t networkContext;
@@ -181,7 +183,6 @@ typedef struct{
 static int mqttmngResetSession(void);
 static int mqttmngSocketConnect(void);
 static int mqttmngEstablishMqttSession(void);
-// static int mqttmngPurgeComponents(void);
 static int mqttmngResubscribe(void);
 
 static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
@@ -207,6 +208,8 @@ static void mqttmngRemovePacketIdToList(uint16_t id);
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 static mqttmng_t mqttmng = {
+    .components = {0},
+    .componentsLen = 0,
     .nSubs = 0,
     .mqttContext = {0}, .networkContext = {0}, .plaintextParams = {0},
     .lock = 0, .unlock = 0,
@@ -231,19 +234,6 @@ int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock){
 
     /* Establish MQTT session on top of TCP connection. */
     status = mqttmngEstablishMqttSession();
-    if( status != 0 ) return status;
-
-    if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ){
-        LogError( ("Failed to obtain lock when initializing.") );
-        return -1;
-    }
-
-    // LogInfo( ("Purging components...") );
-    // status = mqttmngPurgeComponents();
-    // LogInfo( ("Purging status: %d", status) );
-    
-    mqttmngUnlock();
-
     if( status != 0 ) return status;
 
     mqttmng.initDone = 1;
@@ -276,34 +266,37 @@ int32_t mqttmngPublishComponent(const char *name, const char *type, const char *
 
     int32_t status;
     mqttmngPayload_t payload;
+    int clen;
     
-    char data[64];
-    int dataSize;
+    char buf[MQTT_MNG_SUBS_COMP_BUF_SIZE];
     
-    char topic[64];
-
     if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when publishing component.") );
         return -1;
     }
 
     if( flags != NULL )
-        dataSize = snprintf(data, sizeof(data), "%s-%s", type, flags);
+        clen = snprintf(buf, sizeof(buf), "%s:%s-%s;", name, type, flags);
     else
-        dataSize = snprintf(data, sizeof(data), "%s", type);
+        clen = snprintf(buf, sizeof(buf), "%s:%s;", name, type);
 
-    payload.data = data;
-    payload.size = dataSize;
+    if( clen > (sizeof(mqttmng.components) - mqttmng.componentsLen) ){
+        LogError( ("Component %s not added because is too large to fit in components buffer.", name) );
+        mqttmngUnlock();
+        return -1;
+    }
+
+    memcpy(&mqttmng.components[mqttmng.componentsLen], buf, clen);
+    mqttmng.componentsLen += clen;
+
+    payload.data = mqttmng.components;
+    payload.size = mqttmng.componentsLen;
     payload.retain = 1;
     payload.dup = 0;
 
-
-    snprintf(topic, sizeof(topic), "%s/components/%s", MQTT_MNG_CONFIG_DEV_ID, name);
-    LogInfo( ("XXX Topic %s", topic) );
-
-    LogInfo( ("Publishing  component %s with type %s and flags [%s]...", name, type, flags ? flags : "none") );
-    status = mqttmngPublishBare(topic, &payload);
-    LogInfo( ("Publishing status %d ", status) );
+    LogInfo( ("Publishing components %s...", mqttmng.components) );
+    status = mqttmngPublishBare(MQTT_MNG_CONFIG_COMPONENTS_TOPIC, &payload);
+    LogInfo( ("Publish status %d ", status) );
 
     mqttmngUnlock();
 
@@ -511,20 +504,6 @@ static int mqttmngEstablishMqttSession(void){
     return 0;
 }
 //-----------------------------------------------------------------------------
-// static int mqttmngPurgeComponents(void){
-
-//     int32_t status;
-//     mqttmngPayload_t dummypl;
-
-//     dummypl.data = &status;
-//     dummypl.size = 1;
-//     dummypl.dup = 0;
-//     dummypl.retain = 0;
-//     status = mqttmngPublishBare(MQTT_MNG_CONFIG_DEV_ID "/components/purge", &dummypl);
-
-//     return status;
-// }
-//-----------------------------------------------------------------------------
 static int mqttmngResubscribe(void){
 
     uint32_t k;
@@ -717,8 +696,6 @@ static int mqttmngResetSession(void){
     if( mqttmngSocketConnect() != 0 ) continue;
 
     if( mqttmngEstablishMqttSession() != 0 ) continue;
-
-    // if( mqttmngPurgeComponents() != 0 ) continue;
     
     if( mqttmngResubscribe() != 0 ) continue;
 
