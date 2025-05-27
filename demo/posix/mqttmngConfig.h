@@ -36,12 +36,6 @@
 //=============================================================================
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
-typedef enum{
-    MQTT_MNG_COMP_1,
-    MQTT_MNG_COMP_2,
-    MQTT_MNG_COMP_END
-}mqttmngComponents_t;
-
 #define MQTT_MNG_CONFIG_DEV_ID      "dev-0e3ax1"
 #define MQTT_MNG_CONFIG_MAX_SUBS    10
 

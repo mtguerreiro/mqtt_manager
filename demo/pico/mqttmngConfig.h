@@ -36,14 +36,8 @@
 //=============================================================================
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
-
-typedef enum{
-    MQTT_MNG_COMP_1,
-    MQTT_MNG_COMP_2,
-    MQTT_MNG_COMP_END
-}mqttmngComponents_t;
-
-#define MQTT_MNG_CONFIG_DEV_ID  "pico-0e3ax1"
+#define MQTT_MNG_CONFIG_DEV_ID      "pico-0e3ax1"
+#define MQTT_MNG_CONFIG_MAX_SUBS    10
 
 #define MQTT_MNG_CONFIG_HOST    "192.168.0.244"
 #define MQTT_MNG_CONFIG_PORT    1883

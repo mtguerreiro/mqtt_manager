@@ -23,7 +23,7 @@
 /* Includes blink task to update blinking rate according to connection status */
 #include "task_blink.h"
 
-#include "task_svmqtt.h"
+#include "task_mqtt_mng.h"
 //=============================================================================
 
 //=============================================================================
@@ -57,11 +57,11 @@ void taskWiznetInit(void *param){
     taskWiznetInitInitialize();
 
     xTaskCreate(
-        taskSvmqtt,
+        taskMqttmng,
         "svmqtt",
-        TASKS_SVMQTT_CONFIG_TASK_STACK_SIZE,
+        TASKS_MQTT_MNG_CONFIG_TASK_STACK_SIZE,
         NULL,
-        TASKS_SVMQTT_CONFIG_TASK_PRIO,
+        TASKS_MQTT_MNG_CONFIG_TASK_PRIO,
         NULL );
     
     vTaskDelete(NULL);

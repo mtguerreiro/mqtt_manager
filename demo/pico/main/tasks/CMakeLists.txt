@@ -6,7 +6,7 @@ add_library(
     task_blink.c
     task_temperature.c
     task_wiznet_init.c
-    task_svmqtt.c
+    task_mqtt_mng.c
     )
 
 target_link_libraries(
