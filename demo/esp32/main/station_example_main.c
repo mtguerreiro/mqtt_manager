@@ -19,7 +19,7 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
-#include "task_svmqtt.h"
+#include "task_mqtt_mng.h"
 #include "task_temperature.h"
 #include "task_blink.h"
 #include "task_led.h"
@@ -184,11 +184,11 @@ void app_main(void)
     wifi_init_sta();
 
     xTaskCreate(
-        taskSvmqtt,
-        "svmqtt",
-        TASKS_SVMQTT_CONFIG_TASK_STACK_SIZE,
+        taskMqttmng,
+        "mqttmng",
+        TASKS_MQTT_MNG_CONFIG_TASK_STACK_SIZE,
         NULL,
-        TASKS_SVMQTT_CONFIG_TASK_PRIO,
+        TASKS_MQTT_MNG_CONFIG_TASK_PRIO,
         NULL );
 
     xTaskCreate(

@@ -36,19 +36,11 @@
 //=============================================================================
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
-
-typedef enum{
-    MQTT_MNG_COMP_1,
-    MQTT_MNG_COMP_2,
-    MQTT_MNG_COMP_END
-}mqttmngComponents_t;
-
-#define MQTT_MNG_CONFIG_DEV_ID  "dev-esp32"
+#define MQTT_MNG_CONFIG_DEV_ID      "dev-esp32"
+#define MQTT_MNG_CONFIG_MAX_SUBS    10
 
 #define MQTT_MNG_CONFIG_HOST    "192.168.0.244"
 #define MQTT_MNG_CONFIG_PORT    1883
-
-#define MQTT_MNG_CONFIG_DBG     1
 //=============================================================================
 
 #endif /* MQTT_MNG_CONFIG_H_ */

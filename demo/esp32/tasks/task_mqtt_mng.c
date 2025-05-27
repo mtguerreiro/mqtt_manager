@@ -2,7 +2,7 @@
 //=============================================================================
 /*-------------------------------- Includes ---------------------------------*/
 //=============================================================================
-#include "task_svmqtt.h"
+#include "task_mqtt_mng.h"
 
 #include "stdlib.h"
 
@@ -25,26 +25,24 @@
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-static int32_t svmqttStatus = 1;
-
 static SemaphoreHandle_t mutex;
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
-static int32_t taskSvqmttInit(void);
-static int32_t taskSvmqttLock(uint32_t timeout);
-static void taskSvmqttUnlock(void);
+static int32_t taskMqttmngInit(void);
+static int32_t taskMqttmngLock(uint32_t timeout);
+static void taskMqttmngUnlock(void);
 //=============================================================================
 
 //=============================================================================
 /*---------------------------------- Task -----------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-void taskSvmqtt(void *param){
+void taskMqttmng(void *param){
 
-    if( taskSvqmttInit() != 0 ) exit (-1);
+    if( taskMqttmngInit() != 0 ) exit (-1);
 
     while(1){
         mqttmngRun();
@@ -57,26 +55,27 @@ void taskSvmqtt(void *param){
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-static int32_t taskSvqmttInit(void){
+static int32_t taskMqttmngInit(void){
     
     int32_t status;
 
     mutex = xSemaphoreCreateMutex();
     if( mutex == NULL ) return -1;
 
-    status = mqttmngInit(taskSvmqttLock, taskSvmqttUnlock);
+    status = mqttmngInit(taskMqttmngLock, taskMqttmngUnlock);
+
 
     return status;
 }
 //-----------------------------------------------------------------------------
-static int32_t taskSvmqttLock(uint32_t timeout){
+static int32_t taskMqttmngLock(uint32_t timeout){
 
     if( xSemaphoreTake(mutex, timeout) != pdTRUE ) return -1;
 
     return 0;
 }
 //-----------------------------------------------------------------------------
-static void taskSvmqttUnlock(void){
+static void taskMqttmngUnlock(void){
     
     xSemaphoreGive(mutex);
 }

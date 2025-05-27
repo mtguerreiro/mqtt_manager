@@ -296,7 +296,7 @@ int32_t mqttmngPublishComponent(const char *name, const char *type, const char *
 
     LogInfo( ("Publishing components %s...", mqttmng.components) );
     status = mqttmngPublishBare(MQTT_MNG_CONFIG_COMPONENTS_TOPIC, &payload);
-    LogInfo( ("Publish status %d ", status) );
+    LogInfo( ("Publish status %d ", (int)status) );
 
     mqttmngUnlock();
 
