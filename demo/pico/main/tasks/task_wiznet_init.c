@@ -58,7 +58,7 @@ void taskWiznetInit(void *param){
 
     xTaskCreate(
         taskMqttmng,
-        "svmqtt",
+        "mqttmng",
         TASKS_MQTT_MNG_CONFIG_TASK_STACK_SIZE,
         NULL,
         TASKS_MQTT_MNG_CONFIG_TASK_PRIO,

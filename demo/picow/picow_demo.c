@@ -11,9 +11,6 @@
 #include "task.h"
 
 /* Tasks */
-#include "tasks/task_blink.h"
-#include "tasks/task_temperature.h"
-#include "tasks/task_led.h"
 #include "tasks/task_wifi_init.h"
 
 #include "mhw/pico/pwm_irq_handler.h"

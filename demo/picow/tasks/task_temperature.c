@@ -23,15 +23,19 @@
 //=============================================================================
 /*--------------------------------- Defines ---------------------------------*/
 //=============================================================================
+#define TEMP_CFG_MQTT_COMP_NAME     "temp1"
+#define TEMP_CFG_MQTT_COMP_TYPE     "temperature"
+#define TEMP_CFG_MQTT_COMP_FLAGS    NULL
 
+#define TEMP_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" TEMP_CFG_MQTT_COMP_NAME
+
+#define TASK_TEMPERATURE_CFG_PERIOD_MS      3000
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 static SemaphoreHandle_t lock;
-
-static mqttmngConfig_t mqttconfig;
 //=============================================================================
 
 //=============================================================================
@@ -41,7 +45,7 @@ static void taskTemperatureInitialize(void);
 static void taskTemperatureInitializeLock(void);
 static int32_t taskTemperatureLock(uint32_t to);
 static void taskTemperatureUnlock(void);
-static void taskTemperatureUpdateMqtt(uint16_t temp);
+static void taskTemperatureMqttUpdate(uint16_t temp);
 //=============================================================================
 
 //=============================================================================
@@ -62,7 +66,7 @@ void taskTemperature(void *param){
         status = temperatureGet(0, &temp, 1000);
         LogInfo( ("Temperature %d.", temp) );
 
-        if( status == 0 ) taskTemperatureUpdateMqtt( (uint16_t)temp );
+        if( status == 0 ) taskTemperatureMqttUpdate( (uint16_t)temp );
 
         temperatureUpdate(0, 1000);
     }
@@ -89,14 +93,13 @@ static void taskTemperatureInitialize(void){
 
     temperatureInitialize(&config);
 
-    mqttconfig.name = (const char*)"temp1";
-    mqttconfig.type = (const char*)"temperature";
-    mqttconfig.flags = NULL;
-    mqttconfig.subscriptions = NULL;
-    mqttconfig.nSubscriptions = 0;
-
-    mqttmngAddComponent(MQTT_MNG_COMP_1, &mqttconfig);
     while( mqttmngInitDone() != 0 );
+
+    mqttmngPublishComponent(
+        TEMP_CFG_MQTT_COMP_NAME,
+        TEMP_CFG_MQTT_COMP_TYPE,
+        TEMP_CFG_MQTT_COMP_FLAGS
+    );
 }
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitializeLock(void){
@@ -116,7 +119,7 @@ static void taskTemperatureUnlock(void){
     xSemaphoreGive( lock );
 }
 //-----------------------------------------------------------------------------
-static void taskTemperatureUpdateMqtt(uint16_t temp){
+static void taskTemperatureMqttUpdate(uint16_t temp){
 
     mqttmngPayload_t payload;
 
@@ -125,7 +128,7 @@ static void taskTemperatureUpdateMqtt(uint16_t temp){
     payload.dup = 0;
     payload.retain = 0;
 
-    mqttmngPublish(MQTT_MNG_COMP_1, "temperature", &payload);
+    mqttmngPublish(TEMP_CFG_MQTT_COMP_ID "/temperature", &payload);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

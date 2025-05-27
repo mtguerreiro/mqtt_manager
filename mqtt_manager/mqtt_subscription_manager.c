@@ -32,6 +32,7 @@
 
 /* Include header for the subscription manager. */
 #include "mqtt_subscription_manager.h"
+#include "mqttmngConfig.h"
 
 
 /**
@@ -49,9 +50,10 @@ typedef struct SubscriptionManagerRecord
  * @brief The default value for the maximum size of the callback registry in the
  * subscription manager.
  */
-#ifndef MAX_SUBSCRIPTION_CALLBACK_RECORDS
-    #define MAX_SUBSCRIPTION_CALLBACK_RECORDS    5
-#endif
+#define MAX_SUBSCRIPTION_CALLBACK_RECORDS   MQTT_MNG_CONFIG_MAX_SUBS
+//#ifndef MAX_SUBSCRIPTION_CALLBACK_RECORDS
+//    #define MAX_SUBSCRIPTION_CALLBACK_RECORDS    5
+//#endif
 
 /**
  * @brief The registry to store records of topic filters and their subscription callbacks.

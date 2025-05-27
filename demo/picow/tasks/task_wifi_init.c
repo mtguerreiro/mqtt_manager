@@ -14,7 +14,7 @@
 #include "pico/stdlib.h"
 
 /* Tasks */
-#include "task_svmqtt.h"
+#include "task_mqtt_mng.h"
 #include "task_blink.h"
 #include "task_temperature.h"
 #include "task_led.h"]
@@ -55,11 +55,11 @@ void taskWifiInit(void *param){
     printf("Wifi initialized.\n\r");
 
     xTaskCreate(
-        taskSvmqtt,
-        "svmqtt",
-        TASKS_SVMQTT_CONFIG_TASK_STACK_SIZE,
+        taskMqttmng,
+        "mqttmng",
+        TASKS_MQTT_MNG_CONFIG_TASK_STACK_SIZE,
         NULL,
-        TASKS_SVMQTT_CONFIG_TASK_PRIO,
+        TASKS_MQTT_MNG_CONFIG_TASK_PRIO,
         NULL );
 
     xTaskCreate(
