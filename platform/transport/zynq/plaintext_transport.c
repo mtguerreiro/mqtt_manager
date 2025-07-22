@@ -49,6 +49,8 @@ SocketStatus_t Plaintext_Connect( NetworkContext_t * pNetworkContext,
 
     if( status < 0 ) return SOCKETS_API_ERROR;
 
+    pPlaintextParams->socketDescriptor = sock;
+
     return SOCKETS_SUCCESS;
 }
 //-----------------------------------------------------------------------------
