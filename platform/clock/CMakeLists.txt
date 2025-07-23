@@ -9,6 +9,8 @@ endif()
 
 if( PLATFORM_NAME STREQUAL "posix")
     add_subdirectory(posix)
+elseif (PLATFORM_NAME STREQUAL "win")
+    add_subdirectory(win)
 elseif (PLATFORM_NAME STREQUAL "picow")
     add_subdirectory(picow)
 elseif (PLATFORM_NAME STREQUAL "pico")
