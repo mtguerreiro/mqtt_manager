@@ -10,6 +10,9 @@ target_include_directories(
 )
 
 target_link_libraries(plaintext_transport PRIVATE
+    pico_stdlib
+    pico_lwip_headers
+    pico_lwip_arch
     pico_cyw43_arch_lwip_sys_freertos
     FreeRTOS-Kernel FreeRTOS-Kernel-Heap4
 )

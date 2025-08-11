@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 
 set(PLATFORM_NAME "picow")
 
+set(PICO_BOARD pico_w)
 cmake_path(SET PROJECTS_PATH NORMALIZE "${CMAKE_CURRENT_LIST_DIR}/../../..")
 set(FREERTOS_KERNEL_PATH "${PROJECTS_PATH}/freertos")
 set(MDRIVERS_PATH "${PROJECTS_PATH}/mdrivers")
@@ -14,16 +15,9 @@ project(main C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 set(PICO_DEOPTIMIZED_DEBUG 1)
-set(PICO_BOARD pico_w)
 set(WIFI_SSID "--")
 set(WIFI_PASSWORD "--")
 set(USE_NW_TCP_SERVER 1)
-
-if (PICO_SDK_VERSION_STRING VERSION_LESS "1.3.0")
-    message(FATAL_ERROR "Raspberry Pi Pico SDK version 1.3.0 (or later) required. Your version is ${PICO_SDK_VERSION_STRING}")
-endif()
-
-set(PICO_EXAMPLES_PATH ${PROJECT_SOURCE_DIR})
 
 # Initialize the SDK
 pico_sdk_init()
@@ -51,10 +45,10 @@ target_include_directories(
 
 target_link_libraries(
     main
-    tasks
     pico_cyw43_arch_lwip_sys_freertos
     pico_stdlib
     FreeRTOS-Kernel-Heap4 # FreeRTOS kernel and dynamic heap
+    tasks
     mdrivers
     mqtt_manager
 )
