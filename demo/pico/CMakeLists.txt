@@ -9,7 +9,6 @@ set(MQTT_MNG_PATH "${PROJECTS_PATH}/mqtt_manager")
 
 # Pull in SDK (must be before project)
 include(pico_sdk_import.cmake)
-include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
 
 project(pico_examples C CXX ASM)
 set(CMAKE_C_STANDARD 11)
@@ -27,6 +26,9 @@ pico_sdk_init()
 include(example_auto_set_url.cmake)
 
 add_compile_options(-Wall -O2)
+
+include_directories(${PROJECT_SOURCE_DIR})
+include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
 
 # Libraries
 add_subdirectory(${MDRIVERS_PATH} "${PROJECT_BINARY_DIR}/mdrivers")
