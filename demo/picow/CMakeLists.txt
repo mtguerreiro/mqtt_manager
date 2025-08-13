@@ -23,7 +23,7 @@ set(USE_NW_TCP_SERVER 1)
 pico_sdk_init()
 add_compile_options(-Wall -O2)
 
-include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${PROJECT_SOURCE_DIR})  # Needed so FreeRTOS finds FreeRTOS config
 include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
 
 # Include platform
