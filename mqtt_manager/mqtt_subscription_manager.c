@@ -83,7 +83,7 @@ void SubscriptionManager_DispatchHandler( MQTTContext_t * pContext,
                                &matchStatus ) == MQTTSuccess ) &&
             ( matchStatus == true ) )
         {
-            LogInfo( ( "Invoking subscription callback of matching topic filter: "
+            LogDebug( ( "Invoking subscription callback of matching topic filter: "
                        "TopicFilter=%.*s, TopicName=%.*s",
                        callbackRecordList[ listIndex ].topicFilterLength,
                        callbackRecordList[ listIndex ].pTopicFilter,
