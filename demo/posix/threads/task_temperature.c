@@ -6,8 +6,9 @@
 #include "time.h"
 #include "stdio.h"
 
-#include "mqttmngConfig.h"
 #include "mqttmng.h"
+#include "mqttmngConfig.h"
+#include "loggingConfig.h"
 //=============================================================================
 
 //=============================================================================
@@ -41,6 +42,7 @@ static void taskTemperatureMqttUpdate(uint16_t temp);
 //-----------------------------------------------------------------------------
 void* taskTemperature(void *param){
 
+    (void)param;
     taskTemperatureInitialize();
 
     while(1){

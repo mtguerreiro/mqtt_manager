@@ -18,5 +18,5 @@ target_include_directories(
     threads
     PRIVATE
     ${CMAKE_SOURCE_DIR}
-    ${MQTT_MNG_PATH}/logging
+    ${MQTT_MNG_PATH}/clogging
 )

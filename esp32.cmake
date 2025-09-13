@@ -14,7 +14,7 @@ idf_component_register(
         ${CMAKE_SOURCE_DIR}
         ${MQTT_INCLUDE_PUBLIC_DIRS}
         coreMQTT/source/include
-        logging
+        clogging
         platform/transport
         platform/clock
     PRIV_REQUIRES

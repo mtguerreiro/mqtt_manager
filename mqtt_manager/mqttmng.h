@@ -7,14 +7,13 @@
 #include "stdint.h"
 #include "stddef.h"
 
-#include "mqttmngConfig.h"
-#include "mqtt_subscription_manager.h"
+#include "core_mqtt.h"
 //============================================================================
 
 //=============================================================================
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
-typedef SubscriptionManagerCallback_t mqttmngSubscrCb_t;
+typedef void (* mqttmngSubscrCb_t )( MQTTContext_t * pContext, MQTTPublishInfo_t * pPublishInfo );
 
 typedef int32_t (*mqttmngLock_t)(uint32_t timeout);
 typedef void (*mqttmngUnlock_t)(void);

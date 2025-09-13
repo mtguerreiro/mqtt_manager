@@ -37,7 +37,7 @@ target_include_directories(
     ${MQTT_INCLUDE_PUBLIC_DIRS}
     platform/transport/
     platform/clock/
-    logging/
+    clogging/
     mqtt_manager/
 )
 

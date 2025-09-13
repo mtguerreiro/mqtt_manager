@@ -4,7 +4,7 @@ idf_component_register(
         "sockets_impl.c"
     INCLUDE_DIRS
         "."
-        "${CMAKE_CURRENT_SOURCE_DIR}/../../logging"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../../clogging"
     REQUIRES
         lwip
 )

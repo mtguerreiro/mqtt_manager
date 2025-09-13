@@ -6,7 +6,7 @@ target_include_directories(
     plaintext_transport 
     PRIVATE
     "${PROJECT_SOURCE_DIR}"
-    "../../../logging"
+    "../../../clogging"
     "../"
     ${MDRIVERS_PATH}
 )

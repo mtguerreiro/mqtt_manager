@@ -11,6 +11,8 @@
 #include "mqttmng.h"
 
 #include "mqttmngConfig.h"
+#include "mqtt_subscription_manager.h"
+#include "mqttmngLoggingConfig.h"
 
 #include "stdlib.h"
 #include "stdio.h"
@@ -25,8 +27,6 @@
 
 /* Clock for timer. */
 #include "clock.h"
-
-#include "mqtt_subscription_manager.h"
 //============================================================================
 
 //=============================================================================
@@ -50,7 +50,7 @@
  * Provide default values for undefined configuration settings.
  */
 #ifndef MQTT_MNG_CONFIG_PORT
-    #define MQTT_MNG_CONFIG_PORT    ( 8883 )
+    #define MQTT_MNG_CONFIG_PORT    ( 1883 )
 #endif
 
 #ifndef NETWORK_BUFFER_SIZE
@@ -70,13 +70,10 @@
 /**
  * @brief The maximum time interval in seconds which is allowed to elapse
  * between two Control Packets.
- *
- * It is the responsibility of the Client to ensure that the interval between
- * Control Packets being sent does not exceed the this Keep Alive value. In the
- * absence of sending any other Control Packets, the Client MUST send a
- * PINGREQ Packet.
  */
-#define MQTT_KEEP_ALIVE_INTERVAL_SECONDS        ( 60U )
+#ifndef MQTT_MNG_KEEP_ALIVE_INTERVAL_SECONDS
+    #define MQTT_MNG_KEEP_ALIVE_INTERVAL_SECONDS        ( 60U )
+#endif
 
 /**
  * @brief Transport timeout in milliseconds for transport send and receive.
@@ -95,6 +92,13 @@
  */
 #define INCOMING_PUBLISH_RECORD_LEN             ( 10U )
 
+#define MQTT_MNG_LOCK_TIMEOUT_MS            2000
+#define MQTT_MNG_SUBS_COMP_BUF_SIZE         64
+#define MQTT_MNG_SUBS_COMP_MAX_TOPIC_SIZE   64
+
+#ifndef MQTT_MNG_PROC_INTERVAL_MS
+    #define MQTT_MNG_PROC_INTERVAL_MS              ( 50U )
+#endif
 /*-----------------------------------------------------------*/
 
 /**
@@ -148,11 +152,6 @@ struct NetworkContext
 {
     PlaintextParams_t * pParams;
 };
-
-#define MQTT_MNG_LOCK_TIMEOUT_MS            2000
-#define MQTT_MNG_PROC_DELAY_MS              50
-#define MQTT_MNG_SUBS_COMP_BUF_SIZE         64
-#define MQTT_MNG_SUBS_COMP_MAX_TOPIC_SIZE   64
 
 typedef struct{
 
@@ -258,7 +257,7 @@ void mqttmngRun(void){
 
         mqttmngUnlock();
 
-        Clock_SleepMs(MQTT_MNG_PROC_DELAY_MS);
+        Clock_SleepMs(MQTT_MNG_PROC_INTERVAL_MS);
 	}
 }
 //-----------------------------------------------------------------------------
@@ -267,6 +266,7 @@ int32_t mqttmngPublishComponent(const char *name, const char *type, const char *
     int32_t status;
     mqttmngPayload_t payload;
     int clen;
+    int blen;
     
     char buf[MQTT_MNG_SUBS_COMP_BUF_SIZE];
     
@@ -280,7 +280,8 @@ int32_t mqttmngPublishComponent(const char *name, const char *type, const char *
     else
         clen = snprintf(buf, sizeof(buf), "%s:%s;", name, type);
 
-    if( clen > (sizeof(mqttmng.components) - mqttmng.componentsLen) ){
+    blen = (int)( sizeof(mqttmng.components) - mqttmng.componentsLen );
+    if( clen > blen ){
         LogError( ("Component %s not added because is too large to fit in components buffer.", name) );
         mqttmngUnlock();
         return -1;
@@ -476,7 +477,7 @@ static int mqttmngEstablishMqttSession(void){
     connectInfo.pClientIdentifier = MQTT_MNG_CONFIG_DEV_ID;
     connectInfo.clientIdentifierLength = MQTT_MNG_CONFIG_DEV_ID_LEN;
 
-    connectInfo.keepAliveSeconds = MQTT_KEEP_ALIVE_INTERVAL_SECONDS;
+    connectInfo.keepAliveSeconds = MQTT_MNG_KEEP_ALIVE_INTERVAL_SECONDS;
 
     connectInfo.pUserName = NULL;
     connectInfo.userNameLength = 0U;
@@ -686,7 +687,7 @@ static int mqttmngResetSession(void){
 
     while(1){
 
-    Clock_SleepMs(MQTT_MNG_PROC_DELAY_MS);
+    Clock_SleepMs(MQTT_MNG_PROC_INTERVAL_MS);
     
     LogInfo( ("Running an iteration of the reset procedure") );
 
