@@ -244,7 +244,7 @@ void mqttmngRun(void){
 
     int32_t status;
     
-	while( 1 ){
+    while( 1 ){
 
         if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ) continue;
         
@@ -258,7 +258,7 @@ void mqttmngRun(void){
         mqttmngUnlock();
 
         Clock_SleepMs(MQTT_MNG_PROC_INTERVAL_MS);
-	}
+    }
 }
 //-----------------------------------------------------------------------------
 int32_t mqttmngPublishComponent(const char *name, const char *type, const char *flags){
@@ -295,9 +295,9 @@ int32_t mqttmngPublishComponent(const char *name, const char *type, const char *
     payload.retain = 1;
     payload.dup = 0;
 
-    LogInfo( ("Publishing components %s...", mqttmng.components) );
+    LogDebug( ("Publishing components %s...", mqttmng.components) );
     status = mqttmngPublishBare(MQTT_MNG_CONFIG_COMPONENTS_TOPIC, &payload);
-    LogInfo( ("Publish status %d ", (int)status) );
+    LogDebug( ("Publish status %d ", (int)status) );
 
     mqttmngUnlock();
 
@@ -310,7 +310,7 @@ int32_t mqttmngPublish(const char *topic, mqttmngPayload_t *payload){
 
     if( mqttmng.initDone == 0 ) return -1;
 
-    LogInfo( ("Publishing to %s...", topic) );
+    LogDebug( ("Publishing to %s...", topic) );
 
     if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when trying to publish to %s.", topic) );
@@ -321,7 +321,7 @@ int32_t mqttmngPublish(const char *topic, mqttmngPayload_t *payload){
 
     mqttmngUnlock();
 
-    LogInfo( ("Publish status: %d.", status) );
+    LogDebug( ("Publish status: %d.", status) );
 
     return status;
 }
@@ -357,9 +357,9 @@ int32_t mqttmngSubscribe(const char *topic, mqttmngSubscrCb_t callback){
         return -1;
     }
 
-    LogInfo(("Subscribing to %s...", topic));
+    LogDebug(("Subscribing to %s...", topic));
     status = mqttmngSubscribeToTopic(&mqttmng.mqttContext, topic, topiclen, 0);
-    LogInfo(("Subscription status: %d.", status));
+    LogDebug(("Subscription status: %d.", status));
 
     if( status < 0 ){
         LogError( ("Failed to subscribe to topic %s.", topic) );
@@ -511,13 +511,13 @@ static int mqttmngResubscribe(void){
     int status;
 
     for(k = 0; k < mqttmng.nSubs; k++){
-        LogInfo( ("Resubscribing to %s...", mqttmng.subsTopics[k]) );
+        LogDebug( ("Resubscribing to %s...", mqttmng.subsTopics[k]) );
         status = mqttmngSubscribeToTopic(
             &mqttmng.mqttContext,
             mqttmng.subsTopics[k],
             strlen(mqttmng.subsTopics[k]),
             0);
-        LogInfo(("Subscription status: %d.", status));
+        LogDebug(("Subscription status: %d.", status));
 
         if( status < 0 ) return -1;
     }
@@ -562,7 +562,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
                                   MQTTPacketInfo_t * pPacketInfo,
                                   MQTTDeserializedInfo_t * pDeserializedInfo ){
 
-    LogInfo( ("Processing event for packet id: %d", pDeserializedInfo->packetIdentifier) );
+    LogDebug( ("Processing event for packet id: %d", pDeserializedInfo->packetIdentifier) );
     /* Handle incoming publish. The lower 4 bits of the publish packet
      * type is used for the dup, QoS, and retain flags. Hence masking
      * out the lower bits to check if the packet is publish. */
@@ -577,12 +577,12 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
     {
         case MQTT_PACKET_TYPE_SUBACK:
 
-            LogInfo( ("Received SUBACK for packet id %d", pDeserializedInfo->packetIdentifier) );
+            LogDebug( ("Received SUBACK for packet id %d", pDeserializedInfo->packetIdentifier) );
             mqttmngRemovePacketIdToList( pDeserializedInfo->packetIdentifier );
             break;
 
         case MQTT_PACKET_TYPE_UNSUBACK:
-            LogInfo( ( "Received UNSUBACK." ) );
+            LogDebug( ( "Received UNSUBACK." ) );
             break;
 
         case MQTT_PACKET_TYPE_PINGRESP:
@@ -594,7 +594,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
             break;
 
         case MQTT_PACKET_TYPE_PUBACK:
-            LogInfo( ( "PUBACK received for packet id %u.",
+            LogDebug( ( "PUBACK received for packet id %u.",
                         pDeserializedInfo->packetIdentifier ) );
             break;
 
@@ -624,7 +624,7 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
     /* Generate packet identifier for the SUBSCRIBE packet. */
     id = MQTT_GetPacketId( pMqttContext );
 
-    LogInfo( ("Adding packet id %d to list for topic %s.", id, pTopicFilter) );
+    LogDebug( ("Adding packet id %d to list for topic %s.", id, pTopicFilter) );
     mqttmngAddPacketIdToList(id);
 
     /* Send SUBSCRIBE packet. */
