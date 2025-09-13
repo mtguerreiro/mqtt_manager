@@ -18,6 +18,7 @@
 
 #include "mqttmng.h"
 #include "mqttmngConfig.h"
+#include "loggingConfig.h"
 //=============================================================================
 
 //=============================================================================
@@ -64,7 +65,7 @@ void taskTemperature(void *param){
         vTaskDelay(3000);
 
         status = temperatureGet(0, &temp, 1000);
-        LogInfo( ("Temperature %d.", temp) );
+        LogInfo( ("Temperature %d.", (int)temp) );
 
         if( status == 0 ) taskTemperatureMqttUpdate( (uint16_t)temp );
 

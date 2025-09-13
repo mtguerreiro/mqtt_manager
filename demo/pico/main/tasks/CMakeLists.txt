@@ -22,5 +22,5 @@ target_include_directories(
     PRIVATE 
     ${PROJECT_SOURCE_DIR} 
     ${MDRIVERS_PATH}
-    ${MQTT_MNG_PATH}/logging
+    ${MQTT_MNG_PATH}/clogging
 )

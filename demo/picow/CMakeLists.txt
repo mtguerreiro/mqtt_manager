@@ -40,7 +40,7 @@ target_include_directories(
     ./
     ${PROJECT_SOURCE_DIR}
     ${MDRIVERS_PATH}
-    ${MQTT_MNG_PATH}/logging
+    ${MQTT_MNG_PATH}/clogging
 )
 
 target_link_libraries(

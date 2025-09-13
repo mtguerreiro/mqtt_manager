@@ -24,6 +24,8 @@
 #include "task_blink.h"
 
 #include "task_mqtt_mng.h"
+
+#include "loggingConfig.h"
 //=============================================================================
 
 //=============================================================================
@@ -53,7 +55,7 @@ static void taskWiznetInitUnlock(void);
 //-----------------------------------------------------------------------------
 void taskWiznetInit(void *param){
 
-    printf("Trying to init w5500...\n\r");
+    LogInfo(( "Trying to init w5500...\n\r" ));
     taskWiznetInitInitialize();
 
     xTaskCreate(

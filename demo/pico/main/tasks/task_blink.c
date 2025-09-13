@@ -25,10 +25,8 @@
 #define TASK_BLINK_LED   PICO_DEFAULT_LED_PIN
 
 typedef struct{
-
-	/* Blink period */
-	uint32_t period;
-
+    /* Blink period */
+    uint32_t period;
 } blinkControl_t;
 //=============================================================================
 
@@ -55,7 +53,7 @@ void taskBlink(void *param){
     taskBlinkInitialize();
 
     while(1){
-    	taskBlinkToggle();
+        taskBlinkToggle();
         vTaskDelay(xblinkControl.period);
     }
 }
@@ -76,8 +74,8 @@ static void taskBlinkInitialize(void){
     gpio_init(TASK_BLINK_LED);
     gpio_set_dir(TASK_BLINK_LED, GPIO_OUT);
 
-	/* Sets default blinking period */
-	xblinkControl.period = TASK_BLINK_CONFIG_DEFAULT_PERIOD_MS / portTICK_PERIOD_MS;
+    /* Sets default blinking period */
+    xblinkControl.period = TASK_BLINK_CONFIG_DEFAULT_PERIOD_MS / portTICK_PERIOD_MS;
 }
 //-----------------------------------------------------------------------------
 static void taskBlinkToggle(void){
