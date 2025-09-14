@@ -172,7 +172,7 @@ typedef struct{
 
     int initDone;
 
-    MQTTPublishInfo_t lastWillInfo;
+    MQTTPublishInfo_t *lastWillInfo;
 
 }mqttmng_t;
 
@@ -215,7 +215,7 @@ static mqttmng_t mqttmng = {
     .mqttContext = {0}, .networkContext = {0}, .plaintextParams = {0},
     .lock = 0, .unlock = 0,
     .initDone = 0,
-    .lastWillInfo = {0}
+    .lastWillInfo = NULL
     };
 //=============================================================================
 
@@ -230,7 +230,7 @@ int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock, MQTTPublishInfo_
     mqttmng.lock = lock;
     mqttmng.unlock = unlock;
 
-    if( lastWillInfo != 0 ) mqttmng.lastWillInfo = *lastWillInfo;
+    mqttmng.lastWillInfo = lastWillInfo;
 
     /* Initializes network context and connects to broker (server) */
     status = mqttmngSocketConnect();
@@ -446,8 +446,6 @@ static int mqttmngEstablishMqttSession(void){
     MQTTFixedBuffer_t networkBuffer;
     TransportInterface_t transport = { NULL };
 
-    MQTTPublishInfo_t *lastWillInfo = NULL;
-
     transport.pNetworkContext = pNetworkContext;
     transport.send = Plaintext_Send;
     transport.recv = Plaintext_Recv;
@@ -495,10 +493,11 @@ static int mqttmngEstablishMqttSession(void){
                 MQTT_MNG_CONFIG_HOST_LEN,
                 MQTT_MNG_CONFIG_HOST ) );
 
-    if( mqttmng.lastWillInfo.pTopicName != 0 ) lastWillInfo = &mqttmng.lastWillInfo;
-
     /* Establish MQTT session by sending a CONNECT packet. */
-    mqttStatus = MQTT_Connect( pMqttContext, &connectInfo, lastWillInfo, CONNACK_RECV_TIMEOUT_MS, &sessionPresent );
+    mqttStatus = MQTT_Connect(
+        pMqttContext, &connectInfo, mqttmng.lastWillInfo,
+        CONNACK_RECV_TIMEOUT_MS, &sessionPresent
+    );
 
     if( mqttStatus != MQTTSuccess ){
         LogError( ( "Connection with MQTT broker failed with status %s.",
