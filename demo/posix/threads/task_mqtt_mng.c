@@ -64,7 +64,7 @@ static int32_t taskMqttmngInit(void){
 
     taskMqttmngInitLock();
 
-    status = mqttmngInit(taskMqttmngLock, taskMqttmngUnlock);
+    status = mqttmngInit(taskMqttmngLock, taskMqttmngUnlock, 0);
 
     return status;
 }
