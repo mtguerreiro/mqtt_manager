@@ -7,7 +7,7 @@ elseif(NOT DEFINED PLATFORM_NAME)
     message("-- MQTT_MNG: Setting platform to posix because none was specified.")
 endif()
 
-if( PLATFORM_NAME STREQUAL "posix")
+if( PLATFORM_NAME STREQUAL "posix" OR PLATFORM_NAME STREQUAL "pi-zero-2w")
     add_subdirectory(posix)
 elseif (PLATFORM_NAME STREQUAL "picow")
     add_subdirectory(picow)
