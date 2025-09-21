@@ -16,7 +16,7 @@
 
 /* Logging configuration for the Demo. */
 #ifndef LIBRARY_LOG_NAME
-    #define LIBRARY_LOG_NAME    "POSIX DEMO"
+    #define LIBRARY_LOG_NAME    "RPI DEMO"
 #endif
 
 #ifndef LIBRARY_LOG_LEVEL

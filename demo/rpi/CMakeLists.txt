@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-set(PLATFORM_NAME "pi-zero-2w")
+set(PLATFORM_NAME "rpi")
 
 cmake_path(SET PROJECTS_PATH NORMALIZE "${CMAKE_CURRENT_LIST_DIR}/../../..")
 set(MDRIVERS_PATH "${PROJECTS_PATH}/mdrivers")

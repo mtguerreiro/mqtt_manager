@@ -9,7 +9,8 @@
 #include "mqttmngConfig.h"
 #include "loggingConfig.h"
 
-#include "mhw/pi_zero_2w/led/ledpwm.h"
+#include "mdrivers/led.h"
+#include "ledpwm.h"
 //=============================================================================
 
 //=============================================================================
@@ -17,9 +18,11 @@
 //=============================================================================
 #define LED_CFG_MQTT_COMP_NAME  "led223"
 #define LED_CFG_MQTT_COMP_TYPE  "led"
-#define LED_CFG_MQTT_COMP_FLAGS "ri"
+#define LED_CFG_MQTT_COMP_FLAGS "i"
 
 #define LED_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
+
+static int32_t ledPwmIdx = -1;
 //=============================================================================
 
 //=============================================================================
@@ -51,6 +54,20 @@ void* taskLed(void *param){
 //=============================================================================
 //-----------------------------------------------------------------------------
 static void taskLedInitialize(void){
+
+    ledConfig_t ledConfig;
+
+    ledConfig.lock = 0;
+    ledConfig.unlock = 0;
+    ledInitialize(&ledConfig);
+
+    ledpwmInitialize();
+
+    ledDriver_t driver = {0};
+
+    driver.setIntensity = ledpwmSetIntensity;
+
+    ledPwmIdx = ledRegister(&driver, 0);
 
     if( ledpwmInitialize() < 0 ){
         LogError(( "Error initializing PWM" ));
@@ -98,7 +115,7 @@ static void taskLedMqttUpdateIntensity(MQTTContext_t *pContext, MQTTPublishInfo_
 
     LogInfo( ("Invoked led intensity callback with intensity %d.", intensity) );
 
-    ledpwmSetIntensity(0, intensity, 0);
+    ledSetIntensity(ledPwmIdx, 0, intensity, 0);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
