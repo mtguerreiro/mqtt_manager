@@ -48,6 +48,8 @@ static void taskBlinkToggle(void);
 //-----------------------------------------------------------------------------
 void taskBlink(void *param){
 
+    (void)param;
+
     taskBlinkInitialize();
 
     while(1){

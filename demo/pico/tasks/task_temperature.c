@@ -1,7 +1,7 @@
 //=============================================================================
 /*-------------------------------- Includes ---------------------------------*/
 //=============================================================================
-#include "task_wiznet_init.h"
+#include "task_temperature.h"
 
 /* Kernel */
 #include "FreeRTOS.h"
@@ -12,61 +12,68 @@
 #include "stdio.h"
 #include "pico/stdlib.h"
 
-/* Wiznet drivers */
-#include "mdrivers/wiznet/dhcp.h"
-#include "mdrivers/wiznet/socket.h"
-#include "mdrivers/wiznet/wizchip_conf.h"
+/* Temperature module */
+#include "mdrivers/temperature.h"
+#include "temperatureDs18b20.h"
 
-/* Pico initialzation */
-#include "mhw/pico/wiznet_init.h"
-
-/* Includes blink task to update blinking rate according to connection status */
-#include "task_blink.h"
-
-#include "task_mqtt_mng.h"
-
+#include "mqttmng.h"
+#include "mqttmngConfig.h"
 #include "loggingConfig.h"
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Defines ---------------------------------*/
 //=============================================================================
+#define TEMP_CFG_MQTT_COMP_NAME     "temp1"
+#define TEMP_CFG_MQTT_COMP_TYPE     "temperature"
+#define TEMP_CFG_MQTT_COMP_FLAGS    NULL
 
+#define TEMP_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" TEMP_CFG_MQTT_COMP_NAME
+
+#define TASK_TEMPERATURE_CFG_PERIOD_MS      3000
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 static SemaphoreHandle_t lock;
+static int32_t tempidx = -1;
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
-static void taskWiznetInitInitialize(void);
-static void taskWiznetInitInitializeLock(void);
-static void taskWiznetInitLock(void);
-static void taskWiznetInitUnlock(void);
+static void taskTemperatureInitialize(void);
+static void taskTemperatureInitializeLock(void);
+static int32_t taskTemperatureLock(uint32_t to);
+static int32_t taskTemperatureUnlock(void);
+static void taskTemperatureMqttUpdate(uint16_t temp);
 //=============================================================================
 
 //=============================================================================
 /*---------------------------------- Task -----------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-void taskWiznetInit(void *param){
+void taskTemperature(void *param){
 
-    LogInfo(( "Trying to init w5500...\n\r" ));
-    taskWiznetInitInitialize();
+    (void)param;
 
-    xTaskCreate(
-        taskMqttmng,
-        "mqttmng",
-        TASKS_MQTT_MNG_CONFIG_TASK_STACK_SIZE,
-        NULL,
-        TASKS_MQTT_MNG_CONFIG_TASK_PRIO,
-        NULL );
-    
-    vTaskDelete(NULL);
+    int32_t status;
+    int32_t temp;
+    taskTemperatureInitialize();
+
+    temperatureUpdate(tempidx, 0, 1000);
+
+    while(1){
+        vTaskDelay(3000);
+
+        status = temperatureRead(tempidx, 0, &temp, 1000);
+        LogInfo( ("Temperature status %d, reading %d.", (int)status, (int)temp) );
+
+        if( status == 0 ) taskTemperatureMqttUpdate( (uint16_t)temp );
+
+        temperatureUpdate(tempidx, 0, 1000);
+    }
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -75,35 +82,60 @@ void taskWiznetInit(void *param){
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-static void taskWiznetInitInitialize(void){
+static void taskTemperatureInitialize(void){
 
-    taskBlinkUpdatePeriod(250);
+    temperatureConfig_t config = {0};
+    temperatureDriver_t driver = {0};
 
-    wiznetInitConfig_t config;
+    temperatureDs18b20Initialize();
+    taskTemperatureInitializeLock();
 
-    taskWiznetInitInitializeLock();
+    config.lock = taskTemperatureLock;
+    config.unlock = taskTemperatureUnlock;
+    temperatureInitialize(&config);
 
-    config.lock = taskWiznetInitLock;
-    config.unlock = taskWiznetInitUnlock;
-    wiznetInit(&config);
+    driver.read = temperatureDs18b20Read;
+    driver.update = temperatureDs18b20Update;
+    tempidx = temperatureRegister(&driver, 1000);
 
-    taskBlinkUpdatePeriod(1000);
+    while( mqttmngInitDone() != 0 );
+
+    mqttmngPublishComponent(
+        TEMP_CFG_MQTT_COMP_NAME,
+        TEMP_CFG_MQTT_COMP_TYPE,
+        TEMP_CFG_MQTT_COMP_FLAGS
+    );
 }
 //-----------------------------------------------------------------------------
-static void taskWiznetInitInitializeLock(void){
+static void taskTemperatureInitializeLock(void){
 
     lock = xSemaphoreCreateMutex();
-    xSemaphoreGive( lock );
 }
 //-----------------------------------------------------------------------------
-static void taskWiznetInitLock(void){
+static int32_t taskTemperatureLock(uint32_t to){
 
-    xSemaphoreTake(lock, portMAX_DELAY);
+    if( xSemaphoreTake(lock, to) != pdTRUE ) return -1;
+
+    return 0;
 }
 //-----------------------------------------------------------------------------
-static void taskWiznetInitUnlock(void){
+static int32_t taskTemperatureUnlock(void){
 
     xSemaphoreGive( lock );
+
+    return 0;
+}
+//-----------------------------------------------------------------------------
+static void taskTemperatureMqttUpdate(uint16_t temp){
+
+    mqttmngPayload_t payload;
+
+    payload.data = (void *)&temp;
+    payload.size = 2;
+    payload.dup = 0;
+    payload.retain = 0;
+
+    mqttmngPublish(TEMP_CFG_MQTT_COMP_ID "/temperature", &payload);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

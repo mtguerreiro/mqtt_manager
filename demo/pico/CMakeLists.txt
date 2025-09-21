@@ -18,7 +18,7 @@ set(PICO_DEOPTIMIZED_DEBUG 0)
 # Initialize the SDK
 pico_sdk_init()
 
-add_compile_options(-Wall -O2)
+add_compile_options(-Wall -Wextra -O2)
 
 include_directories(${PROJECT_SOURCE_DIR}) # Needed so FreeRTOS finds FreeRTOS config
 include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)
@@ -27,5 +27,27 @@ include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_i
 add_subdirectory(${MDRIVERS_PATH} "${PROJECT_BINARY_DIR}/mdrivers")
 add_subdirectory(${MQTT_MNG_PATH} "${PROJECT_BINARY_DIR}/mqtt_manager")
 
-# Add projects
-add_subdirectory(main)
+# Application
+add_executable(main main.c)
+add_subdirectory(tasks)
+
+target_link_libraries(
+    main
+    tasks
+    pico_stdlib
+    FreeRTOS-Kernel
+    FreeRTOS-Kernel-Heap4 mdrivers
+)
+
+target_include_directories(
+    main
+    PRIVATE
+    ${MDRIVERS_PATH}
+)
+
+# enable usb output, disable uart output
+pico_enable_stdio_usb(main 1)
+pico_enable_stdio_uart(main 0)
+
+# create map/bin/hex/uf2 file etc.
+pico_add_extra_outputs(main)

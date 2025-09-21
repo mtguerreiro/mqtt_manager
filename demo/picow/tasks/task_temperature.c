@@ -13,8 +13,8 @@
 #include "pico/stdlib.h"
 
 /* Temperature module */
-#include "mdrivers/temperature/temperature.h"
-#include "mhw/pico/temperatureHw.h"
+#include "mdrivers/temperature.h"
+#include "temperatureDs18b20.h"
 
 #include "mqttmng.h"
 #include "mqttmngConfig.h"
@@ -37,6 +37,7 @@
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 static SemaphoreHandle_t lock;
+static int32_t tempidx = -1;
 //=============================================================================
 
 //=============================================================================
@@ -45,7 +46,7 @@ static SemaphoreHandle_t lock;
 static void taskTemperatureInitialize(void);
 static void taskTemperatureInitializeLock(void);
 static int32_t taskTemperatureLock(uint32_t to);
-static void taskTemperatureUnlock(void);
+static int32_t taskTemperatureUnlock(void);
 static void taskTemperatureMqttUpdate(uint16_t temp);
 //=============================================================================
 
@@ -55,21 +56,23 @@ static void taskTemperatureMqttUpdate(uint16_t temp);
 //-----------------------------------------------------------------------------
 void taskTemperature(void *param){
 
+    (void) param;
+
     int32_t status;
     int32_t temp;
     taskTemperatureInitialize();
 
-    temperatureUpdate(0, 1000);
+    temperatureUpdate(tempidx, 0, 1000);
 
     while(1){
         vTaskDelay(3000);
 
-        status = temperatureGet(0, &temp, 1000);
-        LogInfo( ("Temperature %d.", (int)temp) );
+        status = temperatureRead(tempidx, 0, &temp, 1000);
+        LogInfo( ("Temperature status %d, reading %d.", (int)status, (int)temp) );
 
         if( status == 0 ) taskTemperatureMqttUpdate( (uint16_t)temp );
 
-        temperatureUpdate(0, 1000);
+        temperatureUpdate(tempidx, 0, 1000);
     }
 }
 //-----------------------------------------------------------------------------
@@ -81,18 +84,19 @@ void taskTemperature(void *param){
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitialize(void){
 
+    temperatureConfig_t config = {0};
+    temperatureDriver_t driver = {0};
+
+    temperatureDs18b20Initialize();
     taskTemperatureInitializeLock();
 
-    temperatureHwInitialize();
-
-    temperatureConfig_t config;
-    config.hwTempUpdate = temperatureHwUpdate;
-    config.hwTempGet = temperatureHwGet;
-    config.hwGetNumberSensors = temperatureHwGetNumberSensors;
     config.lock = taskTemperatureLock;
     config.unlock = taskTemperatureUnlock;
-
     temperatureInitialize(&config);
+
+    driver.read = temperatureDs18b20Read;
+    driver.update = temperatureDs18b20Update;
+    tempidx = temperatureRegister(&driver, 1000);
 
     while( mqttmngInitDone() != 0 );
 
@@ -115,9 +119,11 @@ static int32_t taskTemperatureLock(uint32_t to){
     return 0;
 }
 //-----------------------------------------------------------------------------
-static void taskTemperatureUnlock(void){
+static int32_t taskTemperatureUnlock(void){
 
     xSemaphoreGive( lock );
+
+    return 0;
 }
 //-----------------------------------------------------------------------------
 static void taskTemperatureMqttUpdate(uint16_t temp){

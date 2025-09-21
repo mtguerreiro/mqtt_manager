@@ -42,6 +42,8 @@ static void taskMqttmngUnlock(void);
 //-----------------------------------------------------------------------------
 void taskMqttmng(void *param){
 
+    (void) param;
+
     if( taskMqttmngInit() != 0 ) exit (-1);
 
     while(1){

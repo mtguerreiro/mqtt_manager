@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-set(PLATFORM_NAME "picow")
+set(PLATFORM_NAME "pico")
 
 set(PICO_BOARD pico_w)
 cmake_path(SET PROJECTS_PATH NORMALIZE "${CMAKE_CURRENT_LIST_DIR}/../../..")
@@ -21,7 +21,7 @@ set(USE_NW_TCP_SERVER 1)
 
 # Initialize the SDK
 pico_sdk_init()
-add_compile_options(-Wall -O2)
+add_compile_options(-Wall -Wextra -O2)
 
 include_directories(${PROJECT_SOURCE_DIR})  # Needed so FreeRTOS finds FreeRTOS config
 include(${FREERTOS_KERNEL_PATH}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Kernel_import.cmake)

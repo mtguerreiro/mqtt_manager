@@ -1,66 +1,54 @@
-/*
- * blink.c
- *
- *  Created on: 23.05.2022
- *      Author: Marco Guerreiro
- */
 
 //=============================================================================
 /*-------------------------------- Includes ---------------------------------*/
 //=============================================================================
-#include "task_blink.h"
+#include "task_mqtt_mng.h"
+
+#include "stdlib.h"
 
 /* Kernel */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 
-/* Device and drivers */
-#include "pico/stdlib.h"
-
+/* SVMQTT */
+#include "mqttmng.h"
+#include "mqttmngConfig.h"
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Defines ---------------------------------*/
 //=============================================================================
-#define TASK_BLINK_LED   PICO_DEFAULT_LED_PIN
 
-typedef struct{
-    /* Blink period */
-    uint32_t period;
-} blinkControl_t;
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-/* Task control structure */
-blinkControl_t xblinkControl;
+static SemaphoreHandle_t mutex;
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
-static void taskBlinkInitialize(void);
-static void taskBlinkToggle(void);
+static int32_t taskMqttmngInit(void);
+static int32_t taskMqttmngLock(uint32_t timeout);
+static void taskMqttmngUnlock(void);
 //=============================================================================
 
 //=============================================================================
 /*---------------------------------- Task -----------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-void taskBlink(void *param){
+void taskMqttmng(void *param){
 
-    taskBlinkInitialize();
+    (void)param;
+
+    if( taskMqttmngInit() != 0 ) exit (-1);
 
     while(1){
-        taskBlinkToggle();
-        vTaskDelay(xblinkControl.period);
+        mqttmngRun();
     }
-}
-//-----------------------------------------------------------------------------
-void taskBlinkUpdatePeriod(uint32_t periodms){
-
-    xblinkControl.period = periodms / portTICK_PERIOD_MS;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -69,18 +57,29 @@ void taskBlinkUpdatePeriod(uint32_t periodms){
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-static void taskBlinkInitialize(void){
+static int32_t taskMqttmngInit(void){
+    
+    int32_t status;
 
-    gpio_init(TASK_BLINK_LED);
-    gpio_set_dir(TASK_BLINK_LED, GPIO_OUT);
+    mutex = xSemaphoreCreateMutex();
+    if( mutex == NULL ) return -1;
 
-    /* Sets default blinking period */
-    xblinkControl.period = TASK_BLINK_CONFIG_DEFAULT_PERIOD_MS / portTICK_PERIOD_MS;
+    status = mqttmngInit(taskMqttmngLock, taskMqttmngUnlock, 0);
+
+
+    return status;
 }
 //-----------------------------------------------------------------------------
-static void taskBlinkToggle(void){
+static int32_t taskMqttmngLock(uint32_t timeout){
 
-    gpio_xor_mask(1 << TASK_BLINK_LED);
+    if( xSemaphoreTake(mutex, timeout) != pdTRUE ) return -1;
+
+    return 0;
+}
+//-----------------------------------------------------------------------------
+static void taskMqttmngUnlock(void){
+    
+    xSemaphoreGive(mutex);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

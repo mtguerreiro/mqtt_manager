@@ -44,6 +44,8 @@ static void taskTemperatureMqttUpdate(uint16_t temp);
 //-----------------------------------------------------------------------------
 void taskTemperature(void *param){
 
+    (void)param;
+
     uint16_t temp = 19;
 
     taskTemperatureInitialize();

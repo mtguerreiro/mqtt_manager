@@ -52,6 +52,8 @@ static void taskLedMqttUpdateIntensity(MQTTContext_t *pContext, MQTTPublishInfo_
 //-----------------------------------------------------------------------------
 void taskLed(void *param){
 
+    (void)param;
+
     taskLedInitialize();
 
     vTaskDelete(NULL);

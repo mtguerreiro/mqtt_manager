@@ -49,6 +49,8 @@ static int taskWifiInitHwInit(void);
 //-----------------------------------------------------------------------------
 void taskWifiInit(void *param){
 
+    (void) param;
+
     LogInfo(( "Initializing WiFi..." ));
 
     if( taskWifiInitHwInit() != 0 ) exit (-1);
@@ -71,21 +73,21 @@ void taskWifiInit(void *param){
         TASK_BLINK_CONFIG_TASK_PRIO,
         NULL );
 
-    // xTaskCreate(
-    //     taskTemperature,
-    //     "temperature",
-    //     TASK_TEMPERATURE_CONFIG_TASK_STACK_SIZE,
-    //     NULL,
-    //     TASK_TEMPERATURE_CONFIG_TASK_PRIO,
-    //     NULL );
-    //
-    // xTaskCreate(
-    //     taskLed,
-    //     "led",
-    //     TASK_LED_CONFIG_TASK_STACK_SIZE,
-    //     NULL,
-    //     TASK_LED_CONFIG_TASK_PRIO,
-    //     NULL );
+    xTaskCreate(
+        taskTemperature,
+        "temperature",
+        TASK_TEMPERATURE_CONFIG_TASK_STACK_SIZE,
+        NULL,
+        TASK_TEMPERATURE_CONFIG_TASK_PRIO,
+        NULL );
+
+    xTaskCreate(
+        taskLed,
+        "led",
+        TASK_LED_CONFIG_TASK_STACK_SIZE,
+        NULL,
+        TASK_LED_CONFIG_TASK_PRIO,
+        NULL );
 
     vTaskDelete( NULL );
 
