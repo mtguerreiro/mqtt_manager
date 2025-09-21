@@ -9,6 +9,8 @@
 #include "mqttmng.h"
 #include "mqttmngConfig.h"
 #include "loggingConfig.h"
+
+#include "temperatureDs18b20.h"
 //=============================================================================
 
 //=============================================================================
@@ -44,11 +46,18 @@ void* taskTemperature(void *param){
 
     (void)param;
     taskTemperatureInitialize();
+    int32_t temp = 0;
+    int32_t status = 0;
 
     while(1){
 
         nanosleep(&t, NULL);
-        taskTemperatureMqttUpdate( 20 );
+
+        status = temperatureDs18b20Read(0, &temp);
+        LogInfo( ("Temperature status %d, reading %d.", (int)status, (int)temp) );
+        if( status != 0 ) continue;
+
+        taskTemperatureMqttUpdate( temp );
     }
 }
 //-----------------------------------------------------------------------------
