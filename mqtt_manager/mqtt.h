@@ -1,5 +1,5 @@
-#ifndef MQTT_MNG_H_
-#define MQTT_MNG_H_
+#ifndef MQTT_H_
+#define MQTT_H_
 
 //=============================================================================
 /*-------------------------------- Includes ---------------------------------*/
@@ -13,40 +13,39 @@
 //=============================================================================
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
-typedef void (* mqttmngSubscrCb_t )( MQTTContext_t * pContext, MQTTPublishInfo_t * pPublishInfo );
+typedef void (* mqttSubscrCb_t )( MQTTContext_t * pContext, MQTTPublishInfo_t * pPublishInfo );
 
-typedef int32_t (*mqttmngLock_t)(uint32_t timeout);
-typedef void (*mqttmngUnlock_t)(void);
+typedef int32_t (*mqttLock_t)(uint32_t timeout);
+typedef void (*mqttUnlock_t)(void);
 
-typedef struct 
+typedef struct
 {
     uint8_t retain;
     uint8_t dup;
     const void * data;
     uint32_t size;
-} mqttmngPayload_t;
-
+}mqttPayload_t;
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Functions --------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-int32_t mqttmngInit(
+int32_t mqttInit(
     const char *clientId, MQTTPublishInfo_t *lastWillInfo,
-    mqttmngLock_t lock, mqttmngUnlock_t unlock
+    mqttLock_t lock, mqttUnlock_t unlock
 );
 //-----------------------------------------------------------------------------
-void mqttmngRun(uint32_t forever);
+void mqttRun(uint32_t forever);
 //-----------------------------------------------------------------------------
-int32_t mqttmngPublishComponent(const char *name, const char *type, const char *flags);
+int32_t mqttPublishComponent(const char *name, const char *type, const char *flags);
 //-----------------------------------------------------------------------------
-int32_t mqttmngPublish(const char *topic, mqttmngPayload_t *payload);
+int32_t mqttPublish(const char *topic, mqttPayload_t *payload);
 //-----------------------------------------------------------------------------
-int32_t mqttmngSubscribe(const char *topic, mqttmngSubscrCb_t callback);
+int32_t mqttSubscribe(const char *topic, mqttSubscrCb_t callback);
 //-----------------------------------------------------------------------------
-int mqttmngInitDone(void);
+int mqttInitDone(void);
 //-----------------------------------------------------------------------------
 //=============================================================================
 
-#endif /* MQTT_MNG_H_ */
+#endif /* MQTT_H_ */

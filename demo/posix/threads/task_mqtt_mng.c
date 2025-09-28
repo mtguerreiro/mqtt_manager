@@ -11,7 +11,7 @@
 #include "time.h"
 
 /* SVMQTT */
-#include "mqttmng.h"
+#include "mqtt.h"
 #include "mqttmngConfig.h"
 #include "loggingConfig.h"
 //=============================================================================
@@ -47,9 +47,9 @@ void* taskMqttmng(void *param){
 
     if( taskMqttmngInit() != 0 ) exit (-1);
 
-    while(1){
-        mqttmngRun();
-    }
+    mqttRun(1);
+
+    return 0;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -64,7 +64,7 @@ static int32_t taskMqttmngInit(void){
 
     taskMqttmngInitLock();
 
-    status = mqttmngInit(
+    status = mqttInit(
         MQTT_MNG_CONFIG_DEV_ID, 0,
         taskMqttmngLock, taskMqttmngUnlock
     );

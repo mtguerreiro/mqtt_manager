@@ -5,7 +5,7 @@
 
 #include "stdio.h"
 
-#include "mqttmng.h"
+#include "mqtt.h"
 #include "mqttmngConfig.h"
 #include "loggingConfig.h"
 //=============================================================================
@@ -50,16 +50,16 @@ void* taskLed(void *param){
 //-----------------------------------------------------------------------------
 static void taskLedInitialize(void){
 
-    while( mqttmngInitDone() != 0 );
-    mqttmngPublishComponent(
+    while( mqttInitDone() != 0 );
+    mqttPublishComponent(
         LED_CFG_MQTT_COMP_NAME,
         LED_CFG_MQTT_COMP_TYPE,
         LED_CFG_MQTT_COMP_FLAGS
     );
 
-    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/state", taskLedMqttUpdateState);
-    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/rgb", taskLedMqttUpdateRgb);
-    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/intensity", taskLedMqttUpdateIntensity);
+    mqttSubscribe(LED_CFG_MQTT_COMP_ID "/state", taskLedMqttUpdateState);
+    mqttSubscribe(LED_CFG_MQTT_COMP_ID "/rgb", taskLedMqttUpdateRgb);
+    mqttSubscribe(LED_CFG_MQTT_COMP_ID "/intensity", taskLedMqttUpdateIntensity);
 }
 //-----------------------------------------------------------------------------
 static void taskLedMqttUpdateState(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){

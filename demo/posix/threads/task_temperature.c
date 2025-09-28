@@ -6,7 +6,7 @@
 #include "time.h"
 #include "stdio.h"
 
-#include "mqttmng.h"
+#include "mqtt.h"
 #include "mqttmngConfig.h"
 #include "loggingConfig.h"
 //=============================================================================
@@ -60,9 +60,9 @@ void* taskTemperature(void *param){
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitialize(void){
 
-    while( mqttmngInitDone() != 0 );
+    while( mqttInitDone() != 0 );
 
-    mqttmngPublishComponent(
+    mqttPublishComponent(
         TEMP_CFG_MQTT_COMP_NAME,
         TEMP_CFG_MQTT_COMP_TYPE,
         TEMP_CFG_MQTT_COMP_FLAGS
@@ -76,14 +76,14 @@ static void taskTemperatureInitialize(void){
 //-----------------------------------------------------------------------------
 static void taskTemperatureMqttUpdate(uint16_t temp){
 
-    mqttmngPayload_t payload;
+    mqttPayload_t payload;
 
     payload.data = (void *)&temp;
     payload.size = 2;
     payload.dup = 0;
     payload.retain = 0;
 
-    mqttmngPublish(TEMP_CFG_MQTT_COMP_ID "/temperature", &payload);
+    mqttPublish(TEMP_CFG_MQTT_COMP_ID "/temperature", &payload);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

@@ -12,10 +12,10 @@
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
 #define MQTT_MNG_CONFIG_DEV_ID      "dev-0e3ax1"
-#define MQTT_MNG_CONFIG_MAX_SUBS    10
+#define MQTT_CONFIG_MAX_SUBS    10
 
-#define MQTT_MNG_CONFIG_HOST        "localhost"
-#define MQTT_MNG_CONFIG_PORT        1883
+#define MQTT_CONFIG_HOST        "localhost"
+#define MQTT_CONFIG_PORT        1883
 //=============================================================================
 
 #endif /* MQTT_MNG_CONFIG_H_ */

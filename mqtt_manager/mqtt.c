@@ -8,12 +8,12 @@
 //=============================================================================
 /*-------------------------------- Includes ---------------------------------*/
 //=============================================================================
-#include "mqttmng.h"
+#include "mqtt.h"
 
 #include "mqttDefs.h"
 #include "mqttmngConfig.h"
 #include "mqtt_subscription_manager.h"
-#include "mqttmngLoggingConfig.h"
+#include "mqttLoggingConfig.h"
 
 #include "stdlib.h"
 #include "stdio.h"
@@ -92,7 +92,7 @@ typedef struct{
 
     const char *clientId;
 
-    const char *subsTopics[MQTT_MNG_CONFIG_MAX_SUBS];
+    const char *subsTopics[MQTT_CONFIG_MAX_SUBS];
     uint32_t nSubs;
 
     char components[MQTT_SUBS_COMP_BUF_SIZE];
@@ -102,8 +102,8 @@ typedef struct{
     NetworkContext_t networkContext;
     PlaintextParams_t plaintextParams;
 
-    mqttmngLock_t lock;
-    mqttmngUnlock_t unlock;
+    mqttLock_t lock;
+    mqttUnlock_t unlock;
 
     int32_t packetsAwaitingAck[MQTT_CONFIG_OUTGOING_PUBLISH_RECORD_LEN];
 
@@ -111,41 +111,45 @@ typedef struct{
 
     MQTTPublishInfo_t *lastWillInfo;
 
-}mqttmng_t;
+}mqtt_t;
 
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
-static int mqttmngResetSession(void);
-static int mqttmngSocketConnect(void);
-static int mqttmngEstablishMqttSession(void);
-static int mqttmngResubscribe(void);
+static int mqttResetSession(void);
+static int mqttSocketConnect(void);
+static int mqttEstablishMqttSession(void);
+static int mqttResubscribe(void);
 
-static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
-                                  MQTTPacketInfo_t * pPacketInfo,
-                                  MQTTDeserializedInfo_t * pDeserializedInfo );
+static void mqttEventCallback(
+    MQTTContext_t * pMqttContext,
+    MQTTPacketInfo_t * pPacketInfo,
+    MQTTDeserializedInfo_t * pDeserializedInfo
+);
 
 
-static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext, 
-                                    const char * pTopicFilter, 
-                                    uint16_t topicFilterLength,
-                                    uint16_t qos );
+static int mqttSubscribeToTopic(
+    MQTTContext_t * pMqttContext,
+    const char * pTopicFilter,
+    uint16_t topicFilterLength,
+    uint16_t qos
+);
 
-static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload);
+static int32_t mqttPublishBare(const char *topic, mqttPayload_t *payload);
 
-static int32_t mqttmngLock(uint32_t timeout);
-static void mqttmngUnlock(void);
+static int32_t mqttLock(uint32_t timeout);
+static void mqttUnlock(void);
 
-static void mqttmngAddPacketIdToList(uint16_t id);
-static void mqttmngRemovePacketIdToList(uint16_t id);
+static void mqttAddPacketIdToList(uint16_t id);
+static void mqttRemovePacketIdToList(uint16_t id);
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-static mqttmng_t mqttmng = {
+static mqtt_t mqtt = {
     .components = {0},
     .componentsLen = 0,
     .nSubs = 0,
@@ -160,63 +164,63 @@ static mqttmng_t mqttmng = {
 /*-------------------------------- Functions --------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-int32_t mqttmngInit(
+int32_t mqttInit(
     const char *clientId, MQTTPublishInfo_t *lastWillInfo,
-    mqttmngLock_t lock, mqttmngUnlock_t unlock
+    mqttLock_t lock, mqttUnlock_t unlock
 ){
 
     int status; 
 
-    mqttmng.clientId = clientId;
-    mqttmng.lastWillInfo = lastWillInfo;
+    mqtt.clientId = clientId;
+    mqtt.lastWillInfo = lastWillInfo;
 
-    mqttmng.lock = lock;
-    mqttmng.unlock = unlock;
+    mqtt.lock = lock;
+    mqtt.unlock = unlock;
 
     /* Initializes network context and connects to broker (server) */
-    status = mqttmngSocketConnect();
+    status = mqttSocketConnect();
     if( status != 0 ) return status;
 
     /* Establish MQTT session on top of TCP connection. */
-    status = mqttmngEstablishMqttSession();
+    status = mqttEstablishMqttSession();
     if( status != 0 ) return status;
 
-    mqttmng.initDone = 1;
+    mqtt.initDone = 1;
 
     return 0;
 }
 //-----------------------------------------------------------------------------
-void mqttmngRun(uint32_t forever){
+void mqttRun(uint32_t forever){
 
     int32_t status;
     
     do{
-        if( mqttmngLock(MQTT_LOCK_TIMEOUT_MS) != 0 ) continue;
+        if( mqttLock(MQTT_LOCK_TIMEOUT_MS) != 0 ) continue;
 
-        status = MQTT_ProcessLoop( &mqttmng.mqttContext );
+        status = MQTT_ProcessLoop( &mqtt.mqttContext );
 
         if( (status != MQTTSuccess) && (status != MQTTNeedMoreBytes) ){
             LogWarn( ("Seems like there was a problem with the connection. Will try to reset it..."));
-            mqttmngResetSession();
+            mqttResetSession();
         }
 
-        mqttmngUnlock();
+        mqttUnlock();
 
         if( forever ) Clock_SleepMs(MQTT_PROC_INTERVAL_MS);
     }while(forever);
 }
 //-----------------------------------------------------------------------------
-int32_t mqttmngPublishComponent(const char *name, const char *type, const char *flags){
+int32_t mqttPublishComponent(const char *name, const char *type, const char *flags){
 
     int32_t status;
-    mqttmngPayload_t payload;
+    mqttPayload_t payload;
     int clen;
     int blen;
 
     char topic[MQTT_PUB_COMP_BUF_SIZE];
     char buf[MQTT_SUBS_COMP_BUF_SIZE];
     
-    if( mqttmngLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
+    if( mqttLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when publishing component.") );
         return -1;
     }
@@ -226,66 +230,66 @@ int32_t mqttmngPublishComponent(const char *name, const char *type, const char *
     else
         clen = snprintf(buf, sizeof(buf), "%s:%s;", name, type);
 
-    blen = (int)( sizeof(mqttmng.components) - mqttmng.componentsLen );
+    blen = (int)( sizeof(mqtt.components) - mqtt.componentsLen );
     if( clen > blen ){
         LogError( ("Component %s not added because is too large to fit in components buffer.", name) );
-        mqttmngUnlock();
+        mqttUnlock();
         return -1;
     }
 
-    memcpy(&mqttmng.components[mqttmng.componentsLen], buf, clen);
-    mqttmng.componentsLen += clen;
+    memcpy(&mqtt.components[mqtt.componentsLen], buf, clen);
+    mqtt.componentsLen += clen;
 
-    payload.data = mqttmng.components;
-    payload.size = mqttmng.componentsLen;
+    payload.data = mqtt.components;
+    payload.size = mqtt.componentsLen;
     payload.retain = 1;
     payload.dup = 0;
 
-    LogDebug( ("Publishing components %s...", mqttmng.components) );
-    snprintf(topic, sizeof(topic), "%s/components", mqttmng.clientId);
-    status = mqttmngPublishBare(topic, &payload);
+    LogDebug( ("Publishing components %s...", mqtt.components) );
+    snprintf(topic, sizeof(topic), "%s/components", mqtt.clientId);
+    status = mqttPublishBare(topic, &payload);
     LogDebug( ("Publish status %d ", (int)status) );
 
-    mqttmngUnlock();
+    mqttUnlock();
 
     return status;
 }
 //-----------------------------------------------------------------------------
-int32_t mqttmngPublish(const char *topic, mqttmngPayload_t *payload){
+int32_t mqttPublish(const char *topic, mqttPayload_t *payload){
 
     int status;
 
-    if( mqttmng.initDone == 0 ) return -1;
+    if( mqtt.initDone == 0 ) return -1;
 
     LogDebug( ("Publishing to %s...", topic) );
 
-    if( mqttmngLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
+    if( mqttLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when trying to publish to %s.", topic) );
         return -1;
     }
 
-    status = mqttmngPublishBare(topic, payload);
+    status = mqttPublishBare(topic, payload);
 
-    mqttmngUnlock();
+    mqttUnlock();
 
     LogDebug( ("Publish status: %d.", status) );
 
     return status;
 }
 //-----------------------------------------------------------------------------
-int32_t mqttmngSubscribe(const char *topic, mqttmngSubscrCb_t callback){
+int32_t mqttSubscribe(const char *topic, mqttSubscrCb_t callback){
 
     int status;
     uint32_t topiclen;
-    if( mqttmng.initDone == 0 ) return -1;
+    if( mqtt.initDone == 0 ) return -1;
 
-    if( mqttmngLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
+    if( mqttLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when trying to subscribe to %s.", topic) );
         return -1;
     }
 
-    if( mqttmng.nSubs >= MQTT_MNG_CONFIG_MAX_SUBS ){
-        mqttmngUnlock();
+    if( mqtt.nSubs >= MQTT_CONFIG_MAX_SUBS ){
+        mqttUnlock();
         return -1;
     }
 
@@ -300,12 +304,12 @@ int32_t mqttmngSubscribe(const char *topic, mqttmngSubscrCb_t callback){
 
     if( managerStatus != SUBSCRIPTION_MANAGER_SUCCESS ){
         LogError( ("Failed to register callback for topic %s.", topic) );
-        mqttmngUnlock();
+        mqttUnlock();
         return -1;
     }
 
     LogDebug(("Subscribing to %s...", topic));
-    status = mqttmngSubscribeToTopic(&mqttmng.mqttContext, topic, topiclen, 0);
+    status = mqttSubscribeToTopic(&mqtt.mqttContext, topic, topiclen, 0);
     LogDebug(("Subscription status: %d.", status));
 
     if( status < 0 ){
@@ -313,21 +317,21 @@ int32_t mqttmngSubscribe(const char *topic, mqttmngSubscrCb_t callback){
         /* Remove the registered callback for the temperature topic filter as
         * the subscription operation for the topic filter did not succeed. */
         ( void ) SubscriptionManager_RemoveCallback( topic, topiclen );
-        mqttmngUnlock();
+        mqttUnlock();
         return -1;        
     }
 
-    mqttmng.subsTopics[mqttmng.nSubs] = topic;
-    mqttmng.nSubs++;
+    mqtt.subsTopics[mqtt.nSubs] = topic;
+    mqtt.nSubs++;
     
-    mqttmngUnlock();
+    mqttUnlock();
 
     return status;
 }
 //-----------------------------------------------------------------------------
-int mqttmngInitDone(void){
+int mqttInitDone(void){
 
-    if( mqttmng.initDone == 0 ) return -1;
+    if( mqtt.initDone == 0 ) return -1;
 
     return 0;
 }
@@ -339,11 +343,11 @@ int mqttmngInitDone(void){
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-static int mqttmngSocketConnect(void){
+static int mqttSocketConnect(void){
 
-    mqttmng.networkContext.pParams = &mqttmng.plaintextParams;
+    mqtt.networkContext.pParams = &mqtt.plaintextParams;
 
-    NetworkContext_t * pNetworkContext = &mqttmng.networkContext;
+    NetworkContext_t * pNetworkContext = &mqtt.networkContext;
 
     SocketStatus_t socketStatus = SOCKETS_SUCCESS;
     ServerInfo_t serverInfo;
@@ -377,10 +381,10 @@ static int mqttmngSocketConnect(void){
     return 0;
 }
 //-----------------------------------------------------------------------------
-static int mqttmngEstablishMqttSession(void){
+static int mqttEstablishMqttSession(void){
 
-    NetworkContext_t * pNetworkContext = &mqttmng.networkContext;
-    MQTTContext_t * pMqttContext = &mqttmng.mqttContext;
+    NetworkContext_t * pNetworkContext = &mqtt.networkContext;
+    MQTTContext_t * pMqttContext = &mqtt.mqttContext;
 
     MQTTStatus_t mqttStatus;
     MQTTConnectInfo_t connectInfo;
@@ -400,7 +404,7 @@ static int mqttmngEstablishMqttSession(void){
     mqttStatus = MQTT_Init( pMqttContext,
                             &transport,
                             Clock_GetTimeMs,
-                            mqttmngEventCallback,
+                            mqttEventCallback,
                             &networkBuffer );
 
     if( mqttStatus != MQTTSuccess ){
@@ -421,8 +425,8 @@ static int mqttmngEstablishMqttSession(void){
 
     connectInfo.cleanSession = true;
 
-    connectInfo.pClientIdentifier = mqttmng.clientId;
-    connectInfo.clientIdentifierLength = strlen(mqttmng.clientId);
+    connectInfo.pClientIdentifier = mqtt.clientId;
+    connectInfo.clientIdentifierLength = strlen(mqtt.clientId);
 
     connectInfo.keepAliveSeconds = MQTT_KEEP_ALIVE_INTERVAL_SECONDS;
 
@@ -437,7 +441,7 @@ static int mqttmngEstablishMqttSession(void){
 
     /* Establish MQTT session by sending a CONNECT packet. */
     mqttStatus = MQTT_Connect(
-        pMqttContext, &connectInfo, mqttmng.lastWillInfo,
+        pMqttContext, &connectInfo, mqtt.lastWillInfo,
         MQTT_CONFIG_CONNACK_RECV_TIMEOUT_MS, &sessionPresent
     );
 
@@ -446,7 +450,7 @@ static int mqttmngEstablishMqttSession(void){
                     MQTT_Status_strerror( mqttStatus ) ) );
 
         /* Close the TCP connection.  */
-        ( void ) Plaintext_Disconnect( &mqttmng.networkContext );
+        ( void ) Plaintext_Disconnect( &mqtt.networkContext );
         return -1;
     }
 
@@ -455,17 +459,17 @@ static int mqttmngEstablishMqttSession(void){
     return 0;
 }
 //-----------------------------------------------------------------------------
-static int mqttmngResubscribe(void){
+static int mqttResubscribe(void){
 
     uint32_t k;
     int status;
 
-    for(k = 0; k < mqttmng.nSubs; k++){
-        LogDebug( ("Resubscribing to %s...", mqttmng.subsTopics[k]) );
-        status = mqttmngSubscribeToTopic(
-            &mqttmng.mqttContext,
-            mqttmng.subsTopics[k],
-            strlen(mqttmng.subsTopics[k]),
+    for(k = 0; k < mqtt.nSubs; k++){
+        LogDebug( ("Resubscribing to %s...", mqtt.subsTopics[k]) );
+        status = mqttSubscribeToTopic(
+            &mqtt.mqttContext,
+            mqtt.subsTopics[k],
+            strlen(mqtt.subsTopics[k]),
             0);
         LogDebug(("Subscription status: %d.", status));
 
@@ -475,12 +479,12 @@ static int mqttmngResubscribe(void){
     return 0;
 }
 //-----------------------------------------------------------------------------
-static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload){
+static int32_t mqttPublishBare(const char *topic, mqttPayload_t *payload){
 
     MQTTStatus_t mqttStatus = MQTTSuccess;
     MQTTPublishInfo_t publishInfo;
     uint16_t pubPacketId = MQTT_PACKET_ID_INVALID;
-    MQTTContext_t * pMqttContext = &mqttmng.mqttContext;
+    MQTTContext_t * pMqttContext = &mqtt.mqttContext;
 
     ( void ) memset( &publishInfo, 0x00, sizeof( MQTTPublishInfo_t ) );
 
@@ -508,7 +512,7 @@ static int32_t mqttmngPublishBare(const char *topic, mqttmngPayload_t *payload){
     return 0;
 }
 //-----------------------------------------------------------------------------
-static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
+static void mqttEventCallback( MQTTContext_t * pMqttContext,
                                   MQTTPacketInfo_t * pPacketInfo,
                                   MQTTDeserializedInfo_t * pDeserializedInfo ){
 
@@ -528,7 +532,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
         case MQTT_PACKET_TYPE_SUBACK:
 
             LogDebug( ("Received SUBACK for packet id %d", pDeserializedInfo->packetIdentifier) );
-            mqttmngRemovePacketIdToList( pDeserializedInfo->packetIdentifier );
+            mqttRemovePacketIdToList( pDeserializedInfo->packetIdentifier );
             break;
 
         case MQTT_PACKET_TYPE_UNSUBACK:
@@ -556,7 +560,7 @@ static void mqttmngEventCallback( MQTTContext_t * pMqttContext,
 }
 
 //-----------------------------------------------------------------------------
-static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
+static int mqttSubscribeToTopic( MQTTContext_t * pMqttContext,
                                     const char * pTopicFilter,
                                     uint16_t topicFilterLength,
                                     uint16_t qos ){
@@ -575,7 +579,7 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
     id = MQTT_GetPacketId( pMqttContext );
 
     LogDebug( ("Adding packet id %d to list for topic %s.", id, pTopicFilter) );
-    mqttmngAddPacketIdToList(id);
+    mqttAddPacketIdToList(id);
 
     /* Send SUBSCRIBE packet. */
     mqttStatus = MQTT_Subscribe( pMqttContext,
@@ -592,11 +596,11 @@ static int mqttmngSubscribeToTopic( MQTTContext_t * pMqttContext,
     return id;
 }
 //-----------------------------------------------------------------------------
-static int32_t mqttmngLock(uint32_t timeout){
+static int32_t mqttLock(uint32_t timeout){
 
-    if( mqttmng.lock == 0 ) return 0;
+    if( mqtt.lock == 0 ) return 0;
 
-    if( mqttmng.lock(timeout) != 0 ){
+    if( mqtt.lock(timeout) != 0 ){
         LogError( ("Failed to take lock") );
         return -1;
     }
@@ -604,36 +608,36 @@ static int32_t mqttmngLock(uint32_t timeout){
     return 0;
 }
 //-----------------------------------------------------------------------------
-static void mqttmngUnlock(void){
+static void mqttUnlock(void){
 
-    if( mqttmng.unlock != 0 ) mqttmng.unlock();
+    if( mqtt.unlock != 0 ) mqtt.unlock();
 }
 //-----------------------------------------------------------------------------
-static void mqttmngAddPacketIdToList(uint16_t id){
+static void mqttAddPacketIdToList(uint16_t id){
     
     uint32_t k;
 
     for(k = 0; k < MQTT_CONFIG_OUTGOING_PUBLISH_RECORD_LEN; k++){
-        if( mqttmng.packetsAwaitingAck[k] == -1){
-            mqttmng.packetsAwaitingAck[k] = (int32_t) id;
+        if( mqtt.packetsAwaitingAck[k] == -1){
+            mqtt.packetsAwaitingAck[k] = (int32_t) id;
             break;
         }
     }
 }
 //-----------------------------------------------------------------------------
-static void mqttmngRemovePacketIdToList(uint16_t id){
+static void mqttRemovePacketIdToList(uint16_t id){
 
     uint32_t k;
 
     for(k = 0; k < MQTT_CONFIG_OUTGOING_PUBLISH_RECORD_LEN; k++){
-        if( mqttmng.packetsAwaitingAck[k] == id){
-            mqttmng.packetsAwaitingAck[k] = -1;
+        if( mqtt.packetsAwaitingAck[k] == id){
+            mqtt.packetsAwaitingAck[k] = -1;
             break;
         }
     }
 }
 //-----------------------------------------------------------------------------
-static int mqttmngResetSession(void){
+static int mqttResetSession(void){
 
     while(1){
 
@@ -641,14 +645,14 @@ static int mqttmngResetSession(void){
     
     LogInfo( ("Running an iteration of the reset procedure") );
 
-    MQTT_Disconnect( &mqttmng.mqttContext );
-    Plaintext_Disconnect( &mqttmng.networkContext );
+    MQTT_Disconnect( &mqtt.mqttContext );
+    Plaintext_Disconnect( &mqtt.networkContext );
     
-    if( mqttmngSocketConnect() != 0 ) continue;
+    if( mqttSocketConnect() != 0 ) continue;
 
-    if( mqttmngEstablishMqttSession() != 0 ) continue;
+    if( mqttEstablishMqttSession() != 0 ) continue;
     
-    if( mqttmngResubscribe() != 0 ) continue;
+    if( mqttResubscribe() != 0 ) continue;
 
     break;
 
