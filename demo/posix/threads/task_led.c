@@ -5,8 +5,8 @@
 
 #include "stdio.h"
 
-#include "mqtt.h"
-#include "mqttmngConfig.h"
+#include "mqttmng.h"
+#include "mqttConfig.h"
 #include "loggingConfig.h"
 //=============================================================================
 
@@ -17,7 +17,7 @@
 #define LED_CFG_MQTT_COMP_TYPE  "led"
 #define LED_CFG_MQTT_COMP_FLAGS "ri"
 
-#define LED_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
+#define LED_CFG_MQTT_COMP_ID    MQTT_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
 //=============================================================================
 
 //=============================================================================
@@ -50,16 +50,17 @@ void* taskLed(void *param){
 //-----------------------------------------------------------------------------
 static void taskLedInitialize(void){
 
-    while( mqttInitDone() != 0 );
-    mqttPublishComponent(
+    while( mqttmngInitDone() != 0 );
+
+    mqttmngAddComponent(
         LED_CFG_MQTT_COMP_NAME,
         LED_CFG_MQTT_COMP_TYPE,
         LED_CFG_MQTT_COMP_FLAGS
     );
 
-    mqttSubscribe(LED_CFG_MQTT_COMP_ID "/state", taskLedMqttUpdateState);
-    mqttSubscribe(LED_CFG_MQTT_COMP_ID "/rgb", taskLedMqttUpdateRgb);
-    mqttSubscribe(LED_CFG_MQTT_COMP_ID "/intensity", taskLedMqttUpdateIntensity);
+    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/state", taskLedMqttUpdateState);
+    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/rgb", taskLedMqttUpdateRgb);
+    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/intensity", taskLedMqttUpdateIntensity);
 }
 //-----------------------------------------------------------------------------
 static void taskLedMqttUpdateState(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){

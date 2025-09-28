@@ -2,7 +2,7 @@
 #ifndef MQTT_LOGGING_CONFIG_H_
 #define MQTT_LOGGING_CONFIG_H_
 
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
 
 #include "logging_levels.h"
 

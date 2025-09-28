@@ -7,24 +7,13 @@
 #include "stdint.h"
 #include "stddef.h"
 
-#include "core_mqtt.h"
+#include "mqttDefs.h"
 //============================================================================
 
 //=============================================================================
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
-typedef void (* mqttSubscrCb_t )( MQTTContext_t * pContext, MQTTPublishInfo_t * pPublishInfo );
 
-typedef int32_t (*mqttLock_t)(uint32_t timeout);
-typedef void (*mqttUnlock_t)(void);
-
-typedef struct
-{
-    uint8_t retain;
-    uint8_t dup;
-    const void * data;
-    uint32_t size;
-}mqttPayload_t;
 //=============================================================================
 
 //=============================================================================
@@ -37,8 +26,6 @@ int32_t mqttInit(
 );
 //-----------------------------------------------------------------------------
 void mqttRun(uint32_t forever);
-//-----------------------------------------------------------------------------
-int32_t mqttPublishComponent(const char *name, const char *type, const char *flags);
 //-----------------------------------------------------------------------------
 int32_t mqttPublish(const char *topic, mqttPayload_t *payload);
 //-----------------------------------------------------------------------------

@@ -12,7 +12,7 @@ target_sources(
     mqtt_manager
     PRIVATE
     mqtt_manager/mqtt.c
-    #mqtt_manager/mqttmng.c
+    mqtt_manager/mqttmng.c
     mqtt_manager/mqtt_subscription_manager.c
 )
 

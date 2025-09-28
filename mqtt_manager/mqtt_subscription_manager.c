@@ -32,7 +32,7 @@
 
 /* Include header for the subscription manager. */
 #include "mqtt_subscription_manager.h"
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
 #include "mqttLoggingConfig.h"
 
 

@@ -6,8 +6,8 @@
 #include "time.h"
 #include "stdio.h"
 
-#include "mqtt.h"
-#include "mqttmngConfig.h"
+#include "mqttmng.h"
+#include "mqttConfig.h"
 #include "loggingConfig.h"
 //=============================================================================
 
@@ -18,7 +18,7 @@
 #define TEMP_CFG_MQTT_COMP_TYPE     "temperature"
 #define TEMP_CFG_MQTT_COMP_FLAGS    NULL
 
-#define TEMP_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" TEMP_CFG_MQTT_COMP_NAME
+#define TEMP_CFG_MQTT_COMP_ID    MQTT_CONFIG_DEV_ID "/" TEMP_CFG_MQTT_COMP_NAME
 
 #define TASK_TEMPERATURE_CFG_PERIOD_MS      3000
 //=============================================================================
@@ -60,9 +60,9 @@ void* taskTemperature(void *param){
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitialize(void){
 
-    while( mqttInitDone() != 0 );
+    while( mqttmngInitDone() != 0 );
 
-    mqttPublishComponent(
+    mqttmngAddComponent(
         TEMP_CFG_MQTT_COMP_NAME,
         TEMP_CFG_MQTT_COMP_TYPE,
         TEMP_CFG_MQTT_COMP_FLAGS
@@ -83,7 +83,7 @@ static void taskTemperatureMqttUpdate(uint16_t temp){
     payload.dup = 0;
     payload.retain = 0;
 
-    mqttPublish(TEMP_CFG_MQTT_COMP_ID "/temperature", &payload);
+    mqttmngPublish(TEMP_CFG_MQTT_COMP_ID "/temperature", &payload);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

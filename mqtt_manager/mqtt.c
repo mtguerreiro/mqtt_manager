@@ -11,7 +11,6 @@
 #include "mqtt.h"
 
 #include "mqttDefs.h"
-#include "mqttmngConfig.h"
 #include "mqtt_subscription_manager.h"
 #include "mqttLoggingConfig.h"
 
@@ -95,9 +94,6 @@ typedef struct{
     const char *subsTopics[MQTT_CONFIG_MAX_SUBS];
     uint32_t nSubs;
 
-    char components[MQTT_SUBS_COMP_BUF_SIZE];
-    uint32_t componentsLen;
-
     MQTTContext_t mqttContext;
     NetworkContext_t networkContext;
     PlaintextParams_t plaintextParams;
@@ -150,14 +146,12 @@ static void mqttRemovePacketIdToList(uint16_t id);
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 static mqtt_t mqtt = {
-    .components = {0},
-    .componentsLen = 0,
     .nSubs = 0,
     .mqttContext = {0}, .networkContext = {0}, .plaintextParams = {0},
     .lock = 0, .unlock = 0,
     .initDone = 0,
     .lastWillInfo = NULL
-    };
+};
 //=============================================================================
 
 //=============================================================================
@@ -208,51 +202,6 @@ void mqttRun(uint32_t forever){
 
         if( forever ) Clock_SleepMs(MQTT_PROC_INTERVAL_MS);
     }while(forever);
-}
-//-----------------------------------------------------------------------------
-int32_t mqttPublishComponent(const char *name, const char *type, const char *flags){
-
-    int32_t status;
-    mqttPayload_t payload;
-    int clen;
-    int blen;
-
-    char topic[MQTT_PUB_COMP_BUF_SIZE];
-    char buf[MQTT_SUBS_COMP_BUF_SIZE];
-    
-    if( mqttLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
-        LogError( ("Failed to obtain lock when publishing component.") );
-        return -1;
-    }
-
-    if( flags != NULL )
-        clen = snprintf(buf, sizeof(buf), "%s:%s-%s;", name, type, flags);
-    else
-        clen = snprintf(buf, sizeof(buf), "%s:%s;", name, type);
-
-    blen = (int)( sizeof(mqtt.components) - mqtt.componentsLen );
-    if( clen > blen ){
-        LogError( ("Component %s not added because is too large to fit in components buffer.", name) );
-        mqttUnlock();
-        return -1;
-    }
-
-    memcpy(&mqtt.components[mqtt.componentsLen], buf, clen);
-    mqtt.componentsLen += clen;
-
-    payload.data = mqtt.components;
-    payload.size = mqtt.componentsLen;
-    payload.retain = 1;
-    payload.dup = 0;
-
-    LogDebug( ("Publishing components %s...", mqtt.components) );
-    snprintf(topic, sizeof(topic), "%s/components", mqtt.clientId);
-    status = mqttPublishBare(topic, &payload);
-    LogDebug( ("Publish status %d ", (int)status) );
-
-    mqttUnlock();
-
-    return status;
 }
 //-----------------------------------------------------------------------------
 int32_t mqttPublish(const char *topic, mqttPayload_t *payload){

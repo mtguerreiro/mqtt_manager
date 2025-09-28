@@ -7,12 +7,25 @@
 #include "stdint.h"
 #include "stddef.h"
 
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
+#include "core_mqtt.h"
 //============================================================================
 
 //=============================================================================
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
+typedef void (* mqttSubscrCb_t )( MQTTContext_t * pContext, MQTTPublishInfo_t * pPublishInfo );
+
+typedef int32_t (*mqttLock_t)(uint32_t timeout);
+typedef void (*mqttUnlock_t)(void);
+
+typedef struct
+{
+    uint8_t retain;
+    uint8_t dup;
+    const void * data;
+    uint32_t size;
+}mqttPayload_t;
 
 #ifndef MQTT_CONFIG_HOST
 #warning "Setting MQTT_CONFIG_HOST to localhost as not previous definition was found."
