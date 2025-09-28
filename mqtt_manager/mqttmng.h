@@ -32,7 +32,10 @@ typedef struct
 /*-------------------------------- Functions --------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock, MQTTPublishInfo_t *lastWillInfo);
+int32_t mqttmngInit(
+    const char *clientId, MQTTPublishInfo_t *lastWillInfo,
+    mqttmngLock_t lock, mqttmngUnlock_t unlock
+);
 //-----------------------------------------------------------------------------
 void mqttmngRun(void);
 //-----------------------------------------------------------------------------

@@ -64,7 +64,10 @@ static int32_t taskMqttmngInit(void){
 
     taskMqttmngInitLock();
 
-    status = mqttmngInit(taskMqttmngLock, taskMqttmngUnlock, 0);
+    status = mqttmngInit(
+        MQTT_MNG_CONFIG_DEV_ID, 0,
+        taskMqttmngLock, taskMqttmngUnlock
+    );
 
     return status;
 }

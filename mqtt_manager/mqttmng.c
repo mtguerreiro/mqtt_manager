@@ -33,46 +33,36 @@
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
 #ifndef MQTT_MNG_CONFIG_HOST
-    #error "Please define MQTT_MNG_CONFIG_HOST to define the host in your config file."
+#error "Please define MQTT_MNG_CONFIG_HOST to define the host in your config file."
 #endif
-#ifndef MQTT_MNG_CONFIG_DEV_ID
-    #error "Please define MQTT_MNG_CONFIG_DEV_ID to define a unique for your device."
-#endif
-
-#define MQTT_MNG_CONFIG_COMPONENTS_TOPIC    MQTT_MNG_CONFIG_DEV_ID "/components"
 
 /**
  * @brief Length of MQTT server host name.
  */
-#define MQTT_MNG_CONFIG_HOST_LEN      ( ( uint16_t ) ( sizeof( MQTT_MNG_CONFIG_HOST ) - 1 ) )
+#define MQTT_MNG_CONFIG_HOST_LEN        ( ( uint16_t ) ( sizeof( MQTT_MNG_CONFIG_HOST ) - 1 ) )
 
 /**
  * Provide default values for undefined configuration settings.
  */
 #ifndef MQTT_MNG_CONFIG_PORT
-    #define MQTT_MNG_CONFIG_PORT    ( 1883 )
+#define MQTT_MNG_CONFIG_PORT            ( 1883 )
 #endif
 
 #ifndef NETWORK_BUFFER_SIZE
-    #define NETWORK_BUFFER_SIZE    ( 1024U )
+#define NETWORK_BUFFER_SIZE             ( 1024U )
 #endif
-
-/**
- * @brief Length of client identifier.
- */
-#define MQTT_MNG_CONFIG_DEV_ID_LEN                 ( ( uint16_t ) ( sizeof( MQTT_MNG_CONFIG_DEV_ID ) - 1 ) )
 
 /**
  * @brief Timeout for receiving CONNACK packet in milli seconds.
  */
-#define CONNACK_RECV_TIMEOUT_MS                 ( 1000U )
+#define CONNACK_RECV_TIMEOUT_MS         ( 1000U )
 
 /**
  * @brief The maximum time interval in seconds which is allowed to elapse
  * between two Control Packets.
  */
 #ifndef MQTT_MNG_KEEP_ALIVE_INTERVAL_SECONDS
-    #define MQTT_MNG_KEEP_ALIVE_INTERVAL_SECONDS        ( 60U )
+#define MQTT_MNG_KEEP_ALIVE_INTERVAL_SECONDS    ( 60U )
 #endif
 
 /**
@@ -92,12 +82,14 @@
  */
 #define INCOMING_PUBLISH_RECORD_LEN             ( 10U )
 
-#define MQTT_MNG_LOCK_TIMEOUT_MS            2000
-#define MQTT_MNG_SUBS_COMP_BUF_SIZE         64
-#define MQTT_MNG_SUBS_COMP_MAX_TOPIC_SIZE   64
+#define MQTT_MNG_LOCK_TIMEOUT_MS                500
+#define MQTT_MNG_SUBS_COMP_BUF_SIZE             64
+#ifndef MQTT_MNG_PUB_COMP_BUF_SIZE
+#define MQTT_MNG_PUB_COMP_BUF_SIZE              64
+#endif
 
 #ifndef MQTT_MNG_PROC_INTERVAL_MS
-    #define MQTT_MNG_PROC_INTERVAL_MS              ( 50U )
+#define MQTT_MNG_PROC_INTERVAL_MS              ( 50U )
 #endif
 /*-----------------------------------------------------------*/
 
@@ -154,6 +146,8 @@ struct NetworkContext
 };
 
 typedef struct{
+
+    const char *clientId;
 
     const char *subsTopics[MQTT_MNG_CONFIG_MAX_SUBS];
     uint32_t nSubs;
@@ -223,14 +217,18 @@ static mqttmng_t mqttmng = {
 /*-------------------------------- Functions --------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock, MQTTPublishInfo_t *lastWillInfo){
+int32_t mqttmngInit(
+    const char *clientId, MQTTPublishInfo_t *lastWillInfo,
+    mqttmngLock_t lock, mqttmngUnlock_t unlock
+){
 
     int status; 
 
+    mqttmng.clientId = clientId;
+    mqttmng.lastWillInfo = lastWillInfo;
+
     mqttmng.lock = lock;
     mqttmng.unlock = unlock;
-
-    mqttmng.lastWillInfo = lastWillInfo;
 
     /* Initializes network context and connects to broker (server) */
     status = mqttmngSocketConnect();
@@ -272,7 +270,8 @@ int32_t mqttmngPublishComponent(const char *name, const char *type, const char *
     mqttmngPayload_t payload;
     int clen;
     int blen;
-    
+
+    char topic[MQTT_MNG_PUB_COMP_BUF_SIZE];
     char buf[MQTT_MNG_SUBS_COMP_BUF_SIZE];
     
     if( mqttmngLock(MQTT_MNG_LOCK_TIMEOUT_MS) != 0 ){
@@ -301,7 +300,8 @@ int32_t mqttmngPublishComponent(const char *name, const char *type, const char *
     payload.dup = 0;
 
     LogDebug( ("Publishing components %s...", mqttmng.components) );
-    status = mqttmngPublishBare(MQTT_MNG_CONFIG_COMPONENTS_TOPIC, &payload);
+    snprintf(topic, sizeof(topic), "%s/components", mqttmng.clientId);
+    status = mqttmngPublishBare(topic, &payload);
     LogDebug( ("Publish status %d ", (int)status) );
 
     mqttmngUnlock();
@@ -479,8 +479,8 @@ static int mqttmngEstablishMqttSession(void){
 
     connectInfo.cleanSession = true;
 
-    connectInfo.pClientIdentifier = MQTT_MNG_CONFIG_DEV_ID;
-    connectInfo.clientIdentifierLength = MQTT_MNG_CONFIG_DEV_ID_LEN;
+    connectInfo.pClientIdentifier = mqttmng.clientId;
+    connectInfo.clientIdentifierLength = strlen(mqttmng.clientId);
 
     connectInfo.keepAliveSeconds = MQTT_MNG_KEEP_ALIVE_INTERVAL_SECONDS;
 

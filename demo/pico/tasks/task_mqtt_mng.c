@@ -64,7 +64,10 @@ static int32_t taskMqttmngInit(void){
     mutex = xSemaphoreCreateMutex();
     if( mutex == NULL ) return -1;
 
-    status = mqttmngInit(taskMqttmngLock, taskMqttmngUnlock, 0);
+    status = mqttmngInit(
+        MQTT_MNG_CONFIG_DEV_ID, 0,
+        taskMqttmngLock, taskMqttmngUnlock
+    );
 
 
     return status;
