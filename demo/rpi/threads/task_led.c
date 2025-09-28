@@ -6,7 +6,7 @@
 #include "stdio.h"
 
 #include "mqttmng.h"
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
 #include "loggingConfig.h"
 
 #include "mdrivers/led.h"
@@ -20,7 +20,7 @@
 #define LED_CFG_MQTT_COMP_TYPE  "led"
 #define LED_CFG_MQTT_COMP_FLAGS "i"
 
-#define LED_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
+#define LED_CFG_MQTT_COMP_ID    MQTT_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
 
 static int32_t ledPwmIdx = -1;
 //=============================================================================
@@ -75,7 +75,7 @@ static void taskLedInitialize(void){
     }
 
     while( mqttmngInitDone() != 0 );
-    mqttmngPublishComponent(
+    mqttmngAddComponent(
         LED_CFG_MQTT_COMP_NAME,
         LED_CFG_MQTT_COMP_TYPE,
         LED_CFG_MQTT_COMP_FLAGS
