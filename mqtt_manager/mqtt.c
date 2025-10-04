@@ -189,7 +189,7 @@ void mqttRun(uint32_t forever){
     int32_t status;
     
     do{
-        if( mqttLock(MQTT_LOCK_TIMEOUT_MS) != 0 ) continue;
+        if( mqttLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ) continue;
 
         status = MQTT_ProcessLoop( &mqtt.mqttContext );
 
@@ -200,7 +200,7 @@ void mqttRun(uint32_t forever){
 
         mqttUnlock();
 
-        if( forever ) Clock_SleepMs(MQTT_PROC_INTERVAL_MS);
+        if( forever ) Clock_SleepMs(MQTT_CONFIG_PROC_INTERVAL_MS);
     }while(forever);
 }
 //-----------------------------------------------------------------------------
@@ -212,7 +212,7 @@ int32_t mqttPublish(const char *topic, mqttPayload_t *payload){
 
     LogDebug( ("Publishing to %s...", topic) );
 
-    if( mqttLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
+    if( mqttLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when trying to publish to %s.", topic) );
         return -1;
     }
@@ -232,7 +232,7 @@ int32_t mqttSubscribe(const char *topic, mqttSubscrCb_t callback){
     uint32_t topiclen;
     if( mqtt.initDone == 0 ) return -1;
 
-    if( mqttLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
+    if( mqttLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when trying to subscribe to %s.", topic) );
         return -1;
     }
@@ -377,7 +377,7 @@ static int mqttEstablishMqttSession(void){
     connectInfo.pClientIdentifier = mqtt.clientId;
     connectInfo.clientIdentifierLength = strlen(mqtt.clientId);
 
-    connectInfo.keepAliveSeconds = MQTT_KEEP_ALIVE_INTERVAL_SECONDS;
+    connectInfo.keepAliveSeconds = MQTT_CONFIG_KEEP_ALIVE_INTERVAL_SECONDS;
 
     connectInfo.pUserName = NULL;
     connectInfo.userNameLength = 0U;
@@ -590,21 +590,20 @@ static int mqttResetSession(void){
 
     while(1){
 
-    Clock_SleepMs(MQTT_PROC_INTERVAL_MS);
-    
-    LogInfo( ("Running an iteration of the reset procedure") );
+        Clock_SleepMs(MQTT_CONFIG_PROC_INTERVAL_MS);
 
-    MQTT_Disconnect( &mqtt.mqttContext );
-    Plaintext_Disconnect( &mqtt.networkContext );
-    
-    if( mqttSocketConnect() != 0 ) continue;
+        LogInfo( ("Running an iteration of the reset procedure") );
 
-    if( mqttEstablishMqttSession() != 0 ) continue;
-    
-    if( mqttResubscribe() != 0 ) continue;
+        MQTT_Disconnect( &mqtt.mqttContext );
+        Plaintext_Disconnect( &mqtt.networkContext );
 
-    break;
+        if( mqttSocketConnect() != 0 ) continue;
 
+        if( mqttEstablishMqttSession() != 0 ) continue;
+
+        if( mqttResubscribe() != 0 ) continue;
+
+        break;
     }
 
     LogInfo( ("Reset successful") );

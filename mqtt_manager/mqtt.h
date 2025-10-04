@@ -29,7 +29,11 @@ void mqttRun(uint32_t forever);
 //-----------------------------------------------------------------------------
 int32_t mqttPublish(const char *topic, mqttPayload_t *payload);
 //-----------------------------------------------------------------------------
+int32_t mqttPublishWithId(const char *topic, mqttPayload_t *payload);
+//-----------------------------------------------------------------------------
 int32_t mqttSubscribe(const char *topic, mqttSubscrCb_t callback);
+//-----------------------------------------------------------------------------
+int32_t mqttSubscribeWithId(const char *topic, mqttSubscrCb_t callback);
 //-----------------------------------------------------------------------------
 int mqttInitDone(void);
 //-----------------------------------------------------------------------------

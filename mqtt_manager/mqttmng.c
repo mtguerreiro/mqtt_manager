@@ -21,7 +21,7 @@
 //=============================================================================
 typedef struct{
     const char *clientId;
-    char components[MQTT_SUBS_COMP_BUF_SIZE];
+    char components[MQTT_MNG_CONFIG_SUBS_COMP_BUF_SIZE];
     uint32_t componentsLen;
 
     mqttLock_t lock;
@@ -67,13 +67,13 @@ void mqttmngRun(void){
 
     while(1){
 
-        if( mqttmngLock(MQTT_LOCK_TIMEOUT_MS) != 0 ) continue;
+        if( mqttmngLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ) continue;
 
         mqttRun(0);
 
         mqttmngUnlock();
 
-        Clock_SleepMs(MQTT_PROC_INTERVAL_MS);
+        Clock_SleepMs(MQTT_CONFIG_PROC_INTERVAL_MS);
     }
 }
 //-----------------------------------------------------------------------------
@@ -83,7 +83,7 @@ int32_t mqttmngPublish(const char *topic, mqttPayload_t *payload){
 
     if( mqttmngInitDone() != 0 ) return -1;
 
-    if( mqttmngLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
+    if( mqttmngLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when trying to publish to %s.", topic) );
         return -1;
     }
@@ -101,7 +101,7 @@ int32_t mqttmngSubscribe(const char *topic, mqttSubscrCb_t callback){
 
     if( mqttmngInitDone() != 0 ) return -1;
 
-    if( mqttmngLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
+    if( mqttmngLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when trying to subscribe to %s.", topic) );
         return -1;
     }
@@ -120,10 +120,10 @@ int32_t mqttmngAddComponent(const char *name, const char *type, const char *flag
     int clen;
     int blen;
 
-    char topic[MQTT_PUB_COMP_BUF_SIZE];
-    char buf[MQTT_SUBS_COMP_BUF_SIZE];
+    char topic[MQTT_MNG_CONFIG_PUB_COMP_BUF_SIZE];
+    char buf[MQTT_MNG_CONFIG_SUBS_COMP_BUF_SIZE];
 
-    if( mqttmngLock(MQTT_LOCK_TIMEOUT_MS) != 0 ){
+    if( mqttmngLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
         LogError( ("Failed to obtain lock when publishing component.") );
         return -1;
     }
