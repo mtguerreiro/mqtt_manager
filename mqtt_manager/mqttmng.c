@@ -95,6 +95,24 @@ int32_t mqttmngPublish(const char *topic, mqttPayload_t *payload){
     return status;
 }
 //-----------------------------------------------------------------------------
+int32_t mqttmngPublishWithId(const char *topic, mqttPayload_t *payload){
+
+    int status;
+
+    if( mqttmngInitDone() != 0 ) return -1;
+
+    if( mqttmngLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
+        LogError( ("Failed to obtain lock when trying to publish to %s.", topic) );
+        return -1;
+    }
+
+    status = mqttPublishWithId(topic, payload);
+
+    mqttmngUnlock();
+
+    return status;
+}
+//-----------------------------------------------------------------------------
 int32_t mqttmngSubscribe(const char *topic, mqttSubscrCb_t callback){
 
     int status;
@@ -108,6 +126,24 @@ int32_t mqttmngSubscribe(const char *topic, mqttSubscrCb_t callback){
 
     status = mqttSubscribe(topic, callback);
     
+    mqttmngUnlock();
+
+    return status;
+}
+//-----------------------------------------------------------------------------
+int32_t mqttmngSubscribeWithId(const char *topic, mqttSubscrCb_t callback){
+
+    int status;
+
+    if( mqttmngInitDone() != 0 ) return -1;
+
+    if( mqttmngLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
+        LogError( ("Failed to obtain lock when trying to subscribe to %s.", topic) );
+        return -1;
+    }
+
+    status = mqttSubscribeWithId(topic, callback);
+
     mqttmngUnlock();
 
     return status;

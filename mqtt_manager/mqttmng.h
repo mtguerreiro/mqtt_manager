@@ -26,7 +26,11 @@ void mqttmngRun(void);
 //-----------------------------------------------------------------------------
 int32_t mqttmngPublish(const char *topic, mqttPayload_t *payload);
 //-----------------------------------------------------------------------------
+int32_t mqttmngPublishWithId(const char *topic, mqttPayload_t *payload);
+//-----------------------------------------------------------------------------
 int32_t mqttmngSubscribe(const char *topic, mqttSubscrCb_t callback);
+//-----------------------------------------------------------------------------
+int32_t mqttmngSubscribeWithId(const char *topic, mqttSubscrCb_t callback);
 //-----------------------------------------------------------------------------
 int32_t mqttmngAddComponent(const char *name, const char *type, const char *flags);
 //-----------------------------------------------------------------------------

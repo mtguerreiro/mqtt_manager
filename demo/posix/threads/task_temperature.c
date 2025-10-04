@@ -83,7 +83,7 @@ static void taskTemperatureMqttUpdate(uint16_t temp){
     payload.dup = 0;
     payload.retain = 0;
 
-    mqttmngPublish(TEMP_CFG_MQTT_COMP_ID "/temperature", &payload);
+    mqttmngPublishWithId("temperature", &payload);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

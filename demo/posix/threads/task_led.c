@@ -17,7 +17,6 @@
 #define LED_CFG_MQTT_COMP_TYPE  "led"
 #define LED_CFG_MQTT_COMP_FLAGS "ri"
 
-#define LED_CFG_MQTT_COMP_ID    MQTT_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
 //=============================================================================
 
 //=============================================================================
@@ -58,9 +57,9 @@ static void taskLedInitialize(void){
         LED_CFG_MQTT_COMP_FLAGS
     );
 
-    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/state", taskLedMqttUpdateState);
-    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/rgb", taskLedMqttUpdateRgb);
-    mqttmngSubscribe(LED_CFG_MQTT_COMP_ID "/intensity", taskLedMqttUpdateIntensity);
+    mqttmngSubscribeWithId(LED_CFG_MQTT_COMP_NAME "/state", taskLedMqttUpdateState);
+    mqttmngSubscribeWithId(LED_CFG_MQTT_COMP_NAME "/rgb", taskLedMqttUpdateRgb);
+    mqttmngSubscribeWithId(LED_CFG_MQTT_COMP_NAME "/intensity", taskLedMqttUpdateIntensity);
 }
 //-----------------------------------------------------------------------------
 static void taskLedMqttUpdateState(MQTTContext_t *pContext, MQTTPublishInfo_t *pPublishInfo){

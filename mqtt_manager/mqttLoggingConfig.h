@@ -11,7 +11,7 @@
 #endif
 
 #ifndef MQTT_LOG_LEVEL
-#define MQTT_LOG_LEVEL          LOG_WARN
+#define MQTT_LOG_LEVEL          LOG_DEBUG
 #endif
 
 #ifndef LIBRARY_LOG_NAME

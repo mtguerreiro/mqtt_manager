@@ -98,6 +98,14 @@ typedef struct
 #define MQTT_CONFIG_PROC_INTERVAL_MS                50U
 #endif
 
+#ifndef MQTT_CONFIG_RECONNECT_INTERVAL_MS
+#define MQTT_CONFIG_RECONNECT_INTERVAL_MS           3000U
+#endif
+
+#ifndef MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE
+#define MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE          64U
+#endif
+
 #ifndef MQTT_MNG_CONFIG_SUBS_COMP_BUF_SIZE
 #define MQTT_MNG_CONFIG_SUBS_COMP_BUF_SIZE          64U
 #endif
