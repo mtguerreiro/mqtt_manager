@@ -113,6 +113,8 @@ typedef struct
 #ifndef MQTT_MNG_CONFIG_PUB_COMP_BUF_SIZE
 #define MQTT_MNG_CONFIG_PUB_COMP_BUF_SIZE           64U
 #endif
+
+#define MQTT_MNG_CONFIG_STATUS_TOPIC                "status"
 //=============================================================================
 
 #endif /* MQTT_DEFS_H_ */

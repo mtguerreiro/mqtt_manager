@@ -34,6 +34,9 @@ typedef struct{
 //=============================================================================
 static int32_t mqttmngLock(uint32_t timeout);
 static void mqttmngUnlock(void);
+static int32_t mqttmngInitLastWill(void);
+static int32_t mqttmngPublishStatus(void);
+static void mqttmngPublishComponents(void);
 //=============================================================================
 
 //=============================================================================
@@ -43,6 +46,12 @@ static mqttmngmng_t mqttmng = {
     .components = {0},
     .componentsLen = 0
 };
+
+
+static uint8_t lastWillPayload = 0;
+static char lastWillTopicBuffer[MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE];
+
+static MQTTPublishInfo_t lastwill = {0};
 //=============================================================================
 
 //=============================================================================
@@ -58,7 +67,10 @@ int32_t mqttmngInit(const char *clientId, mqttLock_t lock, mqttUnlock_t unlock){
     mqttmng.lock = lock;
     mqttmng.unlock = unlock;
 
-    status = mqttInit(clientId, 0, 0, 0);
+    status = mqttmngInitLastWill();
+    if( status != 0 ) return status;
+
+    status = mqttInit(clientId, &lastwill, 0, 0);
 
     return status;
 }
@@ -66,14 +78,21 @@ int32_t mqttmngInit(const char *clientId, mqttLock_t lock, mqttUnlock_t unlock){
 void mqttmngRun(void){
 
     while(1){
+        if( mqttmngPublishStatus() == 0 ) break;
+        LogWarn(( "Failed to publish status... will try again"));
+        Clock_SleepMs(MQTT_CONFIG_PROC_INTERVAL_MS);
+    }
+
+    while(1){
+
+        Clock_SleepMs(MQTT_CONFIG_PROC_INTERVAL_MS);
 
         if( mqttmngLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ) continue;
 
+        mqttmngPublishComponents();
         mqttRun(0);
 
         mqttmngUnlock();
-
-        Clock_SleepMs(MQTT_CONFIG_PROC_INTERVAL_MS);
     }
 }
 //-----------------------------------------------------------------------------
@@ -151,12 +170,8 @@ int32_t mqttmngSubscribeWithId(const char *topic, mqttSubscrCb_t callback){
 //-----------------------------------------------------------------------------
 int32_t mqttmngAddComponent(const char *name, const char *type, const char *flags){
 
-    int32_t status;
-    mqttPayload_t payload;
     int clen;
     int blen;
-
-    char topic[MQTT_MNG_CONFIG_PUB_COMP_BUF_SIZE];
     char buf[MQTT_MNG_CONFIG_SUBS_COMP_BUF_SIZE];
 
     if( mqttmngLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
@@ -179,19 +194,9 @@ int32_t mqttmngAddComponent(const char *name, const char *type, const char *flag
     memcpy(&mqttmng.components[mqttmng.componentsLen], buf, clen);
     mqttmng.componentsLen += clen;
 
-    payload.data = mqttmng.components;
-    payload.size = mqttmng.componentsLen;
-    payload.retain = 1;
-    payload.dup = 0;
-
-    LogDebug( ("Publishing components %s...", mqttmng.components) );
-    snprintf(topic, sizeof(topic), "%s/components", mqttmng.clientId);
-    status = mqttPublish(topic, &payload);
-    LogDebug( ("Publish status %d ", (int)status) );
-
     mqttmngUnlock();
 
-    return status;
+    return 0;
 }
 //-----------------------------------------------------------------------------
 int mqttmngInitDone(void){
@@ -221,6 +226,72 @@ static int32_t mqttmngLock(uint32_t timeout){
 static void mqttmngUnlock(void){
 
     if( mqttmng.unlock != 0 ) mqttmng.unlock();
+}
+//-----------------------------------------------------------------------------
+static int32_t mqttmngInitLastWill(void){
+
+    int topiclen;
+
+    topiclen = snprintf(lastWillTopicBuffer, sizeof(lastWillTopicBuffer), "%s/" MQTT_MNG_CONFIG_STATUS_TOPIC, mqttmng.clientId);
+
+    if( topiclen > (int) sizeof(lastWillTopicBuffer) ){
+        LogError( ("Insufficient buffer size to format last will topic. Want %d but buffer size is %d.", topiclen, MQTT_MNG_CONFIG_SUBS_COMP_BUF_SIZE) );
+        return -1;
+    }
+    if( topiclen < 0 ){
+        LogError( ("Failed to format topic with id with error code %d.", topiclen) );
+        return -1;
+    }
+
+    lastwill.pTopicName = lastWillTopicBuffer;
+    lastwill.topicNameLength = topiclen;
+
+    lastwill.qos = 0;
+    lastwill.retain = 1;
+    lastwill.dup = 0;
+
+    lastwill.pPayload = (void *)&lastWillPayload;
+    lastwill.payloadLength = sizeof(lastWillPayload);
+
+    return 0;
+}
+//-----------------------------------------------------------------------------
+static int32_t mqttmngPublishStatus(void){
+
+    int32_t mqttStatus;
+    uint8_t status = 1;
+    mqttPayload_t payload = {0};
+
+    payload.data = (void *)&status;
+    payload.size = sizeof(status);
+    payload.dup = 0;
+    payload.retain = 1;
+
+    mqttStatus = mqttmngPublishWithId( MQTT_MNG_CONFIG_STATUS_TOPIC, &payload );
+
+    return mqttStatus;
+}
+//-----------------------------------------------------------------------------
+static void mqttmngPublishComponents(void){
+
+    int32_t status;
+    mqttPayload_t payload;
+    static uint32_t prevComponentsLen = 0;
+
+    if( prevComponentsLen == mqttmng.componentsLen ) return;
+    prevComponentsLen = mqttmng.componentsLen;
+
+    payload.data = mqttmng.components;
+    payload.size = mqttmng.componentsLen;
+    payload.retain = 1;
+    payload.dup = 0;
+
+    LogDebug( ("Publishing components %s...", mqttmng.components) );
+    status = mqttPublishWithId("components", &payload);
+    LogDebug( ("Publish status %d ", (int)status) );
+
+    /* If publish failed, set prevComponentsLen to zero to try again next time */
+    if( status != 0 ) prevComponentsLen = 0;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
