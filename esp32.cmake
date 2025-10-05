@@ -4,6 +4,7 @@ include(${CMAKE_CURRENT_LIST_DIR}/coreMQTT/mqttFilePaths.cmake)
 # ESP-IDF build
 idf_component_register(
     SRCS
+        mqtt_manager/mqtt.c
         mqtt_manager/mqttmng.c
         mqtt_manager/mqtt_subscription_manager.c
         ${MQTT_SOURCES}

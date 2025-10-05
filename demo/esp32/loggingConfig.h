@@ -16,7 +16,7 @@
 
 /* Logging configuration for the Demo. */
 #ifndef LIBRARY_LOG_NAME
-    #define LIBRARY_LOG_NAME    "PICOW DEMO"
+    #define LIBRARY_LOG_NAME    "ESP32 DEMO"
 #endif
 
 #ifndef LIBRARY_LOG_LEVEL

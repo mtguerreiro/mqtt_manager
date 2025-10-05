@@ -19,9 +19,6 @@
 #include "task_temperature.h"
 #include "task_led.h"
 
-/* SVMQTT */
-#include "mqttmng.h"
-#include "mqttmngConfig.h"
 #include "loggingConfig.h"
 //=============================================================================
 

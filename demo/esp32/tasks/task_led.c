@@ -13,7 +13,7 @@
 #include "led_strip.h"
 
 #include "mqttmng.h"
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
 #include "loggingConfig.h"
 //=============================================================================
 
@@ -24,7 +24,7 @@
 #define LED_CFG_MQTT_COMP_TYPE      "led"
 #define LED_CFG_MQTT_COMP_FLAGS     "ri"
 
-#define LED_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
+#define LED_CFG_MQTT_COMP_ID    MQTT_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
 
 #define LED_GPIO 23
 //=============================================================================
@@ -89,8 +89,8 @@ static void taskLedInitialize(void){
     /// Create the LED strip object
     ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip));
 
-    while( mqttmngInitDone() != 0 );
-    mqttmngPublishComponent(
+    while( mqttmngInitDone() != 0 ) vTaskDelay(1000 / portTICK_PERIOD_MS);;
+    mqttmngAddComponent(
         LED_CFG_MQTT_COMP_NAME,
         LED_CFG_MQTT_COMP_TYPE,
         LED_CFG_MQTT_COMP_FLAGS

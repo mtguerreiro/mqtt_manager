@@ -12,7 +12,6 @@
 #include "driver/gpio.h"
 
 #define BLINK_GPIO 2
-
 //=============================================================================
 
 //=============================================================================
@@ -37,8 +36,6 @@ blinkControl_t xblinkControl;
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
 static void taskBlinkInitialize(void);
-static int32_t taskBlinkPeriodUpdate(void *in, uint32_t insize, void **out, uint32_t maxoutsize);
-static void taskBlinkCheckWifi(void);
 static void taskBlinkToggle(void);
 //=============================================================================
 
@@ -53,7 +50,6 @@ void taskBlink(void *param){
     taskBlinkInitialize();
 
     while(1){
-        //taskBlinkCheckWifi();
     	taskBlinkToggle();
         vTaskDelay(xblinkControl.period);
     }
@@ -72,27 +68,6 @@ static void taskBlinkInitialize(void){
 
 	/* Sets default blinking period */
 	xblinkControl.period = TASK_BLINK_CONFIG_DEFAULT_PERIOD_MS / portTICK_PERIOD_MS;
-}
-//-----------------------------------------------------------------------------
-static int32_t taskBlinkPeriodUpdate(void *in, uint32_t insize, void **out, uint32_t maxoutsize){
-
-	uint32_t period;
-
-	period = *((uint32_t *)(in));
-
-	xblinkControl.period = period / portTICK_PERIOD_MS;
-
-    return 0;
-}
-//-----------------------------------------------------------------------------
-static void taskBlinkCheckWifi(void){
-
-    int status = 0;
-
-    //status = cyw43_wifi_link_status(&cyw43_state, CYW43_ITF_STA);
-
-    if( status != 1 ) xblinkControl.period = 250 / portTICK_PERIOD_MS;
-    else xblinkControl.period = 1000 / portTICK_PERIOD_MS;
 }
 //-----------------------------------------------------------------------------
 static void taskBlinkToggle(void){

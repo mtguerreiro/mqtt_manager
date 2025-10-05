@@ -21,6 +21,7 @@ list(APPEND USER_COMPILE_SOURCES
     )
 
 list(APPEND USER_COMPILE_SOURCES
+    "${MQTT_MNG_PATH}/mqtt_manager/mqtt.c"
     "${MQTT_MNG_PATH}/mqtt_manager/mqttmng.c"
     "${MQTT_MNG_PATH}/mqtt_manager/mqtt_subscription_manager.c"
 )

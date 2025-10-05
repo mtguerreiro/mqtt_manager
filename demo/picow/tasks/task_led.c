@@ -18,7 +18,7 @@
 #include "ledpwm.h"
 
 #include "mqttmng.h"
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
 #include "loggingConfig.h"
 //=============================================================================
 
@@ -28,7 +28,7 @@
 #define LED_CFG_MQTT_COMP_NAME  "led223"
 #define LED_CFG_MQTT_COMP_TYPE  "led"
 
-#define LED_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
+#define LED_CFG_MQTT_COMP_ID    MQTT_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
 
 static int32_t ledPwmIdx = -1;
 static int32_t ledWsIdx = -1;
@@ -71,8 +71,8 @@ static void taskLedInitialize(void){
     taskLedInitializeHwWs2812();
     taskLedInitializeHwPwm();
 
-    while( mqttmngInitDone() != 0 );
-    mqttmngPublishComponent(
+    while( mqttmngInitDone() != 0 ) vTaskDelay(1000 / portTICK_PERIOD_MS);
+    mqttmngAddComponent(
         LED_CFG_MQTT_COMP_NAME,
         LED_CFG_MQTT_COMP_TYPE,
         "ri"

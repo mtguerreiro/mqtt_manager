@@ -9,7 +9,7 @@
 #include "freertos/semphr.h"
 
 #include "mqttmng.h"
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
 #include "loggingConfig.h"
 //=============================================================================
 
@@ -20,7 +20,7 @@
 #define TEMP_CFG_MQTT_COMP_TYPE     "temperature"
 #define TEMP_CFG_MQTT_COMP_FLAGS    NULL
 
-#define TEMP_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" TEMP_CFG_MQTT_COMP_NAME
+#define TEMP_CFG_MQTT_COMP_ID    MQTT_CONFIG_DEV_ID "/" TEMP_CFG_MQTT_COMP_NAME
 
 #define TASK_TEMPERATURE_CFG_PERIOD_MS      3000
 //=============================================================================
@@ -65,9 +65,9 @@ void taskTemperature(void *param){
 //-----------------------------------------------------------------------------
 static void taskTemperatureInitialize(void){
 
-    while( mqttmngInitDone() != 0 );
+    while( mqttmngInitDone() != 0 ) vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-    mqttmngPublishComponent(
+    mqttmngAddComponent(
         TEMP_CFG_MQTT_COMP_NAME,
         TEMP_CFG_MQTT_COMP_TYPE,
         TEMP_CFG_MQTT_COMP_FLAGS
@@ -76,7 +76,7 @@ static void taskTemperatureInitialize(void){
 //-----------------------------------------------------------------------------
 static void taskTemperatureMqttUpdate(uint16_t temp){
 
-    mqttmngPayload_t payload;
+    mqttPayload_t payload;
 
     payload.data = (void *)&temp;
     payload.size = 2;
