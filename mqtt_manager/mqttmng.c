@@ -47,7 +47,6 @@ static mqttmngmng_t mqttmng = {
     .componentsLen = 0
 };
 
-
 static uint8_t lastWillPayload = 0;
 static char lastWillTopicBuffer[MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE];
 
@@ -114,24 +113,6 @@ int32_t mqttmngPublish(const char *topic, mqttPayload_t *payload){
     return status;
 }
 //-----------------------------------------------------------------------------
-int32_t mqttmngPublishWithId(const char *topic, mqttPayload_t *payload){
-
-    int status;
-
-    if( mqttmngInitDone() != 0 ) return -1;
-
-    if( mqttmngLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
-        LogError( ("Failed to obtain lock when trying to publish to %s.", topic) );
-        return -1;
-    }
-
-    status = mqttPublishWithId(topic, payload);
-
-    mqttmngUnlock();
-
-    return status;
-}
-//-----------------------------------------------------------------------------
 int32_t mqttmngSubscribe(const char *topic, mqttSubscrCb_t callback){
 
     int status;
@@ -145,24 +126,6 @@ int32_t mqttmngSubscribe(const char *topic, mqttSubscrCb_t callback){
 
     status = mqttSubscribe(topic, callback);
     
-    mqttmngUnlock();
-
-    return status;
-}
-//-----------------------------------------------------------------------------
-int32_t mqttmngSubscribeWithId(const char *topic, mqttSubscrCb_t callback){
-
-    int status;
-
-    if( mqttmngInitDone() != 0 ) return -1;
-
-    if( mqttmngLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
-        LogError( ("Failed to obtain lock when trying to subscribe to %s.", topic) );
-        return -1;
-    }
-
-    status = mqttSubscribeWithId(topic, callback);
-
     mqttmngUnlock();
 
     return status;
@@ -205,7 +168,6 @@ int mqttmngInitDone(void){
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
-
 
 //=============================================================================
 /*---------------------------- Static functions -----------------------------*/
@@ -258,28 +220,51 @@ static int32_t mqttmngInitLastWill(void){
 //-----------------------------------------------------------------------------
 static int32_t mqttmngPublishStatus(void){
 
+    static char topic[MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE];
+    int topiclen;
     int32_t mqttStatus;
     uint8_t status = 1;
     mqttPayload_t payload = {0};
+
+    topiclen = snprintf(topic, sizeof(topic), "%s/" MQTT_MNG_CONFIG_STATUS_TOPIC, mqttmng.clientId);
+    if( topiclen > (int) sizeof(topic) ){
+        LogError( ("Insufficient buffer size to format last will topic. Want %d but buffer size is %d.", topiclen, MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE) );
+        return -1;
+    }
+    if( topiclen < 0 ){
+        LogError( ("Failed to format topic with id with error code %d.", topiclen) );
+        return -1;
+    }
 
     payload.data = (void *)&status;
     payload.size = sizeof(status);
     payload.dup = 0;
     payload.retain = 1;
 
-    mqttStatus = mqttmngPublishWithId( MQTT_MNG_CONFIG_STATUS_TOPIC, &payload );
+    mqttStatus = mqttmngPublish( topic, &payload );
 
     return mqttStatus;
 }
 //-----------------------------------------------------------------------------
 static void mqttmngPublishComponents(void){
 
+    static char topic[MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE];
+    int topiclen;
     int32_t status;
     mqttPayload_t payload;
     static uint32_t prevComponentsLen = 0;
 
     if( prevComponentsLen == mqttmng.componentsLen ) return;
-    prevComponentsLen = mqttmng.componentsLen;
+
+    topiclen = snprintf(topic, sizeof(topic), "%s/" MQTT_MNG_CONFIG_COMPONENTS_TOPIC, mqttmng.clientId);
+    if( topiclen > (int) sizeof(topic) ){
+        LogError( ("Insufficient buffer size to format last will topic. Want %d but buffer size is %d.", topiclen, MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE) );
+        return;
+    }
+    if( topiclen < 0 ){
+        LogError( ("Failed to format topic with id with error code %d.", topiclen) );
+        return;
+    }
 
     payload.data = mqttmng.components;
     payload.size = mqttmng.componentsLen;
@@ -287,11 +272,10 @@ static void mqttmngPublishComponents(void){
     payload.dup = 0;
 
     LogDebug( ("Publishing components %s...", mqttmng.components) );
-    status = mqttPublishWithId("components", &payload);
+    status = mqttPublish(topic, &payload);
     LogDebug( ("Publish status %d ", (int)status) );
 
-    /* If publish failed, set prevComponentsLen to zero to try again next time */
-    if( status != 0 ) prevComponentsLen = 0;
+    if( status == 0 ) prevComponentsLen = mqttmng.componentsLen;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

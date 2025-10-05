@@ -115,6 +115,10 @@ typedef struct
 #endif
 
 #define MQTT_MNG_CONFIG_STATUS_TOPIC                "status"
+
+#ifndef MQTT_MNG_CONFIG_COMPONENTS_TOPIC
+#define MQTT_MNG_CONFIG_COMPONENTS_TOPIC            "components"
+#endif
 //=============================================================================
 
 #endif /* MQTT_DEFS_H_ */

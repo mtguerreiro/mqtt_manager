@@ -92,7 +92,6 @@ typedef struct{
     const char *clientId;
 
     const char *subsTopics[MQTT_CONFIG_MAX_SUBS];
-    uint32_t subsTopicWithId[MQTT_CONFIG_MAX_SUBS];
     uint32_t nSubs;
 
     MQTTContext_t mqttContext;
@@ -140,14 +139,14 @@ static int32_t mqttLock(uint32_t timeout);
 static void mqttUnlock(void);
 
 static void mqttAddPacketIdToList(uint16_t id);
-static void mqttRemovePacketIdToList(uint16_t id);
+static void mqttRemovePacketIdFromList(uint16_t id);
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
 static mqtt_t mqtt = {
-    .nSubs = 0, .subsTopicWithId = {0},
+    .nSubs = 0,
     .mqttContext = {0}, .networkContext = {0}, .plaintextParams = {0},
     .lock = 0, .unlock = 0,
     .initDone = 0,
@@ -227,43 +226,6 @@ int32_t mqttPublish(const char *topic, mqttPayload_t *payload){
     return status;
 }
 //-----------------------------------------------------------------------------
-int32_t mqttPublishWithId(const char *topic, mqttPayload_t *payload){
-
-    int status;
-    char topicWithId[MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE];
-    int clen;
-
-    if( mqtt.initDone == 0 ) return -1;
-
-    LogDebug( ("Publishing to %s...", topic) );
-
-    if( mqttLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
-        LogError( ("Failed to obtain lock when trying to publish to %s.", topic) );
-        return -1;
-    }
-
-    clen = snprintf(topicWithId, sizeof(topicWithId), "%s/%s", mqtt.clientId, topic);
-
-    if( clen > (int) sizeof(topicWithId) ){
-        LogError( ("Insufficient buffer size to format topic with id. Want %d but buffer size is %d.", clen, MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE) );
-        mqttUnlock();
-        return -1;
-    }
-    if( clen < 0 ){
-        LogError( ("Failed to format topic with id with error code %d.", clen) );
-        mqttUnlock();
-        return -1;
-    }
-
-    status = mqttPublishBare(topicWithId, payload);
-
-    mqttUnlock();
-
-    LogDebug( ("Publish status: %d.", status) );
-
-    return status;
-}
-//-----------------------------------------------------------------------------
 int32_t mqttSubscribe(const char *topic, mqttSubscrCb_t callback){
 
     int status;
@@ -310,75 +272,8 @@ int32_t mqttSubscribe(const char *topic, mqttSubscrCb_t callback){
     }
 
     mqtt.subsTopics[mqtt.nSubs] = topic;
-    mqtt.subsTopicWithId[mqtt.nSubs] = 0;
     mqtt.nSubs++;
     
-    mqttUnlock();
-
-    return status;
-}
-//-----------------------------------------------------------------------------
-int32_t mqttSubscribeWithId(const char *topic, mqttSubscrCb_t callback){
-
-    int status;
-    int topiclen;
-    char topicWithId[MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE];
-
-    if( mqtt.initDone == 0 ) return -1;
-
-    if( mqttLock(MQTT_CONFIG_LOCK_TIMEOUT_MS) != 0 ){
-        LogError( ("Failed to obtain lock when trying to subscribe to %s.", topic) );
-        return -1;
-    }
-
-    if( mqtt.nSubs >= MQTT_CONFIG_MAX_SUBS ){
-        mqttUnlock();
-        return -1;
-    }
-
-    topiclen = snprintf(topicWithId, sizeof(topicWithId), "%s/%s", mqtt.clientId, topic);
-
-    if( topiclen > (int) sizeof(topicWithId) ){
-        LogError( ("Insufficient buffer size to format topic with id. Want %d but buffer size is %d.", topiclen, MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE) );
-        mqttUnlock();
-        return -1;
-    }
-    if( topiclen < 0 ){
-        LogError( ("Failed to format topic with id with error code %d.", topiclen) );
-        mqttUnlock();
-        return -1;
-    }
-
-    SubscriptionManagerStatus_t managerStatus = ( SubscriptionManagerStatus_t ) 0u;
-
-    /* Register the topic filter and its callback with subscription manager.
-     * On an incoming PUBLISH message whose topic name that matches the topic filter
-     * being registered, its callback will be invoked. */
-    managerStatus = SubscriptionManager_RegisterCallback( topicWithId, topiclen, callback );
-
-    if( managerStatus != SUBSCRIPTION_MANAGER_SUCCESS ){
-        LogError( ("Failed to register callback for topic %s.", topicWithId) );
-        mqttUnlock();
-        return -1;
-    }
-
-    LogDebug(("Subscribing to %s...", topicWithId));
-    status = mqttSubscribeToTopic(&mqtt.mqttContext, topicWithId, topiclen, 0);
-    LogDebug(("Subscription status: %d.", status));
-
-    if( status < 0 ){
-        LogError( ("Failed to subscribe to topic %s.", topicWithId) );
-        /* Remove the registered callback for the temperature topic filter as
-         * the subscription operation for the topic filter did not succeed. */
-        ( void ) SubscriptionManager_RemoveCallback( topicWithId, topiclen );
-        mqttUnlock();
-        return -1;
-    }
-
-    mqtt.subsTopics[mqtt.nSubs] = topic;
-    mqtt.subsTopicWithId[mqtt.nSubs] = 1;
-    mqtt.nSubs++;
-
     mqttUnlock();
 
     return status;
@@ -392,7 +287,6 @@ int mqttInitDone(void){
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
-
 
 //=============================================================================
 /*---------------------------- Static functions -----------------------------*/
@@ -518,19 +412,14 @@ static int mqttResubscribe(void){
 
     uint32_t k;
     int status;
-    int topiclen;
-    char topic[MQTT_CONFIG_TOPIC_WITH_ID_BUF_SIZE];
 
     for(k = 0; k < mqtt.nSubs; k++){
-        if( mqtt.subsTopicWithId[k] == 1 ){
-            topiclen = snprintf(topic, sizeof(topic), "%s/%s", mqtt.clientId, mqtt.subsTopics[k]);
-        }
-        else{
-            topiclen = snprintf(topic, sizeof(topic), "%s", mqtt.subsTopics[k]);
-        }
-
-        LogDebug( ("Resubscribing to %s...", topic) );
-        status = mqttSubscribeToTopic( &mqtt.mqttContext, topic, topiclen, 0);
+        LogDebug( ("Resubscribing to %s...", mqtt.subsTopics[k]) );
+        status = mqttSubscribeToTopic(
+            &mqtt.mqttContext,
+            mqtt.subsTopics[k],
+            strlen(mqtt.subsTopics[k]),
+                                      0);
         LogDebug(("Subscription status: %d.", status));
 
         if( status < 0 ) return -1;
@@ -592,7 +481,7 @@ static void mqttEventCallback( MQTTContext_t * pMqttContext,
         case MQTT_PACKET_TYPE_SUBACK:
 
             LogDebug( ("Received SUBACK for packet id %d", pDeserializedInfo->packetIdentifier) );
-            mqttRemovePacketIdToList( pDeserializedInfo->packetIdentifier );
+            mqttRemovePacketIdFromList( pDeserializedInfo->packetIdentifier );
             break;
 
         case MQTT_PACKET_TYPE_UNSUBACK:
@@ -685,7 +574,7 @@ static void mqttAddPacketIdToList(uint16_t id){
     }
 }
 //-----------------------------------------------------------------------------
-static void mqttRemovePacketIdToList(uint16_t id){
+static void mqttRemovePacketIdFromList(uint16_t id){
 
     uint32_t k;
 
