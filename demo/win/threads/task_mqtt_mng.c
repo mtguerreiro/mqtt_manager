@@ -10,9 +10,10 @@
 #include "pthread.h"
 #include "time.h"
 
-/* SVMQTT */
+/* MQTT */
 #include "mqttmng.h"
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
+#include "loggingConfig.h"
 //=============================================================================
 
 //=============================================================================
@@ -42,11 +43,13 @@ static void taskMqttmngUnlock(void);
 //-----------------------------------------------------------------------------
 void* taskMqttmng(void *param){
 
+    (void)param;
+
     if( taskMqttmngInit() != 0 ) exit (-1);
 
-    while(1){
-        mqttmngRun();
-    }
+    mqttmngRun();
+
+    return 0;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -61,7 +64,7 @@ static int32_t taskMqttmngInit(void){
 
     taskMqttmngInitLock();
 
-    status = mqttmngInit(taskMqttmngLock, taskMqttmngUnlock);
+    status = mqttmngInit(MQTT_CONFIG_DEV_ID, taskMqttmngLock, taskMqttmngUnlock);
 
     return status;
 }

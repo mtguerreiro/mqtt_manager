@@ -8,7 +8,7 @@
 #include "stddef.h"
 #include "time.h"
 
-#include "mqttmngConfig.h"
+#include "loggingConfig.h"
 //=============================================================================
 
 //=============================================================================
@@ -35,6 +35,7 @@ static void taskBlinkInitialize(void);
 //-----------------------------------------------------------------------------
 void* taskBlink(void *param){
 
+    (void)param;
     taskBlinkInitialize();
 
     while(1){

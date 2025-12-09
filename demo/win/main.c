@@ -17,10 +17,13 @@
 //-----------------------------------------------------------------------------
 int main(int argc, char** argv){
 
-	pthread_t taskBlinkHandle;
-	pthread_t taskMqttmngHandle;
-	pthread_t taskTemperatureHandle;
-	pthread_t taskLedHandle;	
+    (void)argc;
+    (void)argv;
+
+    pthread_t taskBlinkHandle;
+    pthread_t taskMqttmngHandle;
+    pthread_t taskTemperatureHandle;
+    pthread_t taskLedHandle;
 
     pthread_create( &taskBlinkHandle, NULL, taskBlink, NULL );
     pthread_create( &taskMqttmngHandle, NULL, taskMqttmng, NULL );
@@ -32,10 +35,9 @@ int main(int argc, char** argv){
     pthread_join( taskTemperatureHandle, NULL );
     pthread_join( taskLedHandle, NULL );
 
-	exit( 0 );
+    exit( 0 );
 
-	return 0;
+    return 0;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
-
