@@ -47,7 +47,7 @@ static int mainSysInit(void);
 //-----------------------------------------------------------------------------
 int main(void){
 
-	mainSysInit();
+    mainSysInit();
 
     xTaskCreate(
         taskBlink,                          /* Function that implements the task. */
@@ -81,8 +81,8 @@ int main(void){
         TASK_WIZNET_INIT_CONFIG_TASK_PRIO,          /* Priority at which the task is created. */
         NULL );                                     /* Used to pass out the created task's handle. */
 
-	vTaskStartScheduler();
-	while(1);
+    vTaskStartScheduler();
+    while(1);
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

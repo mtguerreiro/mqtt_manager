@@ -1,68 +1,55 @@
-/*
- * blink.c
- *
- *  Created on: 23.05.2022
- *      Author: Marco Guerreiro
- */
 
 //=============================================================================
 /*-------------------------------- Includes ---------------------------------*/
 //=============================================================================
-#include "task_blink.h"
+#include "task_mqtt_mng.h"
+
+#include "stdlib.h"
 
 /* Kernel */
-#include "FreeRTOS.h"
-#include "task.h"
+#include "pthread.h"
+#include "time.h"
 
-/* Device and drivers */
-#include "pico/stdlib.h"
-
+/* MQTT */
+#include "mqttmng.h"
+#include "mqttConfig.h"
+#include "loggingConfig.h"
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Defines ---------------------------------*/
 //=============================================================================
-#define TASK_BLINK_LED   PICO_DEFAULT_LED_PIN
 
-typedef struct{
-
-	/* Blink period */
-	uint32_t period;
-
-} blinkControl_t;
 //=============================================================================
 
 //=============================================================================
 /*--------------------------------- Globals ---------------------------------*/
 //=============================================================================
-/* Task control structure */
-blinkControl_t xblinkControl;
+pthread_mutex_t mutex;
 //=============================================================================
 
 //=============================================================================
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
-static void taskBlinkInitialize(void);
-static void taskBlinkToggle(void);
+static int32_t taskMqttmngInit(void);
+static int32_t taskMqttmngInitLock(void);
+static int32_t taskMqttmngLock(uint32_t timeout);
+static void taskMqttmngUnlock(void);
 //=============================================================================
 
 //=============================================================================
 /*---------------------------------- Task -----------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-void taskBlink(void *param){
+void* taskMqttmng(void *param){
 
-    taskBlinkInitialize();
+    (void)param;
 
-    while(1){
-    	taskBlinkToggle();
-        vTaskDelay(xblinkControl.period);
-    }
-}
-//-----------------------------------------------------------------------------
-void taskBlinkUpdatePeriod(uint32_t periodms){
+    if( taskMqttmngInit() != 0 ) exit (-1);
 
-    xblinkControl.period = periodms / portTICK_PERIOD_MS;
+    mqttmngRun();
+
+    return 0;
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -71,18 +58,53 @@ void taskBlinkUpdatePeriod(uint32_t periodms){
 /*---------------------------- Static functions -----------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-static void taskBlinkInitialize(void){
+static int32_t taskMqttmngInit(void){
+    
+    int32_t status;
 
-    gpio_init(TASK_BLINK_LED);
-    gpio_set_dir(TASK_BLINK_LED, GPIO_OUT);
+    taskMqttmngInitLock();
 
-	/* Sets default blinking period */
-	xblinkControl.period = TASK_BLINK_CONFIG_DEFAULT_PERIOD_MS / portTICK_PERIOD_MS;
+    status = mqttmngInit(MQTT_CONFIG_DEV_ID, taskMqttmngLock, taskMqttmngUnlock);
+
+    return status;
 }
 //-----------------------------------------------------------------------------
-static void taskBlinkToggle(void){
+static int32_t taskMqttmngInitLock(void){
 
-    gpio_xor_mask(1 << TASK_BLINK_LED);
+    if( pthread_mutex_init(&mutex, NULL) != 0 ){
+        LogInfo( ("Failed to initialize mutex.\n\r") );
+        return -1;
+    }
+
+    return 0;
+}
+//-----------------------------------------------------------------------------
+static int32_t taskMqttmngLock(uint32_t timeout){
+
+    struct timespec t;
+    unsigned long nsec;
+
+    clock_gettime(CLOCK_REALTIME, &t);
+    
+    nsec = (timeout % 1000) * 1000000;
+
+    t.tv_sec += timeout / 1000;
+    
+    nsec = t.tv_nsec + (timeout % 1000) * 1000000;
+    if( nsec >= 1000000000UL ){
+        nsec = nsec - 1000000000U;
+        t.tv_sec += 1;
+    }
+    t.tv_nsec = nsec;
+
+    if( pthread_mutex_timedlock(&mutex, &t) != 0 ) return -1;
+
+    return 0;
+}
+//-----------------------------------------------------------------------------
+static void taskMqttmngUnlock(void){
+
+    pthread_mutex_unlock( &mutex );
 }
 //-----------------------------------------------------------------------------
 //=============================================================================

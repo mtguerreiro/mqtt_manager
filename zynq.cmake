@@ -10,7 +10,7 @@ list(APPEND USER_INCLUDE_DIRECTORIES
     "${MQTT_MNG_PATH}/platform/transport/zynq/"
     "${MQTT_MNG_PATH}/platform/clock/"
     "${MQTT_MNG_PATH}/platform/clock/zynq"
-    "${MQTT_MNG_PATH}/logging/"
+    "${MQTT_MNG_PATH}/clogging/"
     "${MQTT_MNG_PATH}/mqtt_manager/"
 )
 
@@ -21,6 +21,7 @@ list(APPEND USER_COMPILE_SOURCES
     )
 
 list(APPEND USER_COMPILE_SOURCES
+    "${MQTT_MNG_PATH}/mqtt_manager/mqtt.c"
     "${MQTT_MNG_PATH}/mqtt_manager/mqttmng.c"
     "${MQTT_MNG_PATH}/mqtt_manager/mqtt_subscription_manager.c"
 )

@@ -14,6 +14,7 @@ message("-- MQTT_MNG_PATH IS ${MQTT_MNG_PATH}")
 set(EXTRA_COMPONENT_DIRS
     ${CMAKE_CURRENT_LIST_DIR}/tasks
     ${MQTT_MNG_PATH}
+    ${MQTT_MNG_PATH}/clogging
     ${MQTT_MNG_PATH}/platform/clock
     ${MQTT_MNG_PATH}/platform/transport
 )

@@ -13,7 +13,7 @@
 
 /* SVMQTT */
 #include "mqttmng.h"
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
 //=============================================================================
 
 //=============================================================================
@@ -42,11 +42,11 @@ static void taskMqttmngUnlock(void);
 //-----------------------------------------------------------------------------
 void taskMqttmng(void *param){
 
+    (void) param;
+
     if( taskMqttmngInit() != 0 ) exit (-1);
 
-    while(1){
-        mqttmngRun();
-    }
+    mqttmngRun();
 }
 //-----------------------------------------------------------------------------
 //=============================================================================
@@ -62,8 +62,7 @@ static int32_t taskMqttmngInit(void){
     mutex = xSemaphoreCreateMutex();
     if( mutex == NULL ) return -1;
 
-    status = mqttmngInit(taskMqttmngLock, taskMqttmngUnlock);
-
+    status = mqttmngInit(MQTT_CONFIG_DEV_ID, taskMqttmngLock, taskMqttmngUnlock);
 
     return status;
 }

@@ -10,7 +10,7 @@ project(posix_mqttmng_example)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED True)
 
-add_compile_options(-Wall -O2)
+add_compile_options(-Wall -Wextra -Wpedantic -O2)
 
 add_subdirectory(${MQTT_MNG_PATH} "${PROJECT_BINARY_DIR}/mqtt_manager")
 add_subdirectory(threads)

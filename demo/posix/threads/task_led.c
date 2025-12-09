@@ -6,7 +6,8 @@
 #include "stdio.h"
 
 #include "mqttmng.h"
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
+#include "loggingConfig.h"
 //=============================================================================
 
 //=============================================================================
@@ -16,7 +17,7 @@
 #define LED_CFG_MQTT_COMP_TYPE  "led"
 #define LED_CFG_MQTT_COMP_FLAGS "ri"
 
-#define LED_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
+#define LED_CFG_MQTT_COMP_ID    MQTT_CONFIG_DEV_ID "/" LED_CFG_MQTT_COMP_NAME
 //=============================================================================
 
 //=============================================================================
@@ -34,6 +35,8 @@ static void taskLedMqttUpdateIntensity(MQTTContext_t *pContext, MQTTPublishInfo_
 //-----------------------------------------------------------------------------
 void* taskLed(void *param){
 
+    (void)param;
+
     taskLedInitialize();
 
     return NULL;
@@ -48,7 +51,8 @@ void* taskLed(void *param){
 static void taskLedInitialize(void){
 
     while( mqttmngInitDone() != 0 );
-    mqttmngPublishComponent(
+
+    mqttmngAddComponent(
         LED_CFG_MQTT_COMP_NAME,
         LED_CFG_MQTT_COMP_TYPE,
         LED_CFG_MQTT_COMP_FLAGS

@@ -137,9 +137,9 @@ static SocketStatus_t resolveHostName( const char * pHostName,
     if( dnsStatus != 0 )
     {
         LogError( ( "Failed to resolve DNS: Hostname=%.*s, ErrorCode=%d.\n",
-                    ( int32_t ) hostNameLength,
+                    ( int ) hostNameLength,
                     pHostName,
-                    dnsStatus ) );
+                    ( int ) dnsStatus ) );
         returnStatus = SOCKETS_DNS_FAILURE;
     }
 
@@ -239,7 +239,7 @@ static SocketStatus_t attemptConnection( struct addrinfo * pListHead,
     ( void ) hostNameLength;
 
     LogDebug( ( "Attempting to connect to: Host=%.*s.",
-                ( int32_t ) hostNameLength,
+                ( int ) hostNameLength,
                 pHostName ) );
 
     /* Attempt to connect to one of the retrieved DNS records. */
@@ -267,13 +267,13 @@ static SocketStatus_t attemptConnection( struct addrinfo * pListHead,
     if( returnStatus == SOCKETS_SUCCESS )
     {
         LogDebug( ( "Established TCP connection: Server=%.*s.\n",
-                    ( int32_t ) hostNameLength,
+                    ( int ) hostNameLength,
                     pHostName ) );
     }
     else
     {
         LogError( ( "Could not connect to any resolved IP address from %.*s.",
-                    ( int32_t ) hostNameLength,
+                    ( int ) hostNameLength,
                     pHostName ) );
     }
 

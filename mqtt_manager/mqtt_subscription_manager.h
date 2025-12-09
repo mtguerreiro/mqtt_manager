@@ -35,8 +35,6 @@
 #endif
 /* *INDENT-ON* */
 
-#include "mqttmngConfig.h"
-
 /* Include MQTT library. */
 #include "core_mqtt.h"
 

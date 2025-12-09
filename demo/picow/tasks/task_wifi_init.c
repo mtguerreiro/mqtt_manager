@@ -17,11 +17,9 @@
 #include "task_mqtt_mng.h"
 #include "task_blink.h"
 #include "task_temperature.h"
-#include "task_led.h"]
+#include "task_led.h"
 
-/* SVMQTT */
-#include "mqttmng.h"
-#include "mqttmngConfig.h"
+#include "loggingConfig.h"
 //=============================================================================
 
 //=============================================================================
@@ -48,11 +46,13 @@ static int taskWifiInitHwInit(void);
 //-----------------------------------------------------------------------------
 void taskWifiInit(void *param){
 
-    printf("Initializing WiFi...\n\r");
+    (void) param;
+
+    LogInfo(( "Initializing WiFi..." ));
 
     if( taskWifiInitHwInit() != 0 ) exit (-1);
 
-    printf("Wifi initialized.\n\r");
+    LogInfo(( "Wifi initialized." ));
 
     xTaskCreate(
         taskMqttmng,
@@ -102,23 +102,23 @@ static int taskWifiInitHwInit(void){
 
     if (cyw43_arch_init())
     {
-        printf("Failed to initialize cyw43 arch \n");
+        LogError(( "Failed to initialize cyw43 arch" ));
         return -1;
     }
  
     cyw43_arch_enable_sta_mode();
  
-    printf("Connecting to WiFi...\n\r");
+    LogInfo(( "Connecting to WiFi..." ));
     
     status = cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000);
     if ( status != 0 )
     {   
-        printf("Failed to connect. Status %d\n\r", status);
+        LogError(( "Failed to connect. Status %d", status ));
         while(1);
         return -1;
     }
 
-    printf("Connected.\n\r");
+    LogInfo(( "Connected. "));
 
     return 0;
 }

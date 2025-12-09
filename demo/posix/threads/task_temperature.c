@@ -6,8 +6,9 @@
 #include "time.h"
 #include "stdio.h"
 
-#include "mqttmngConfig.h"
 #include "mqttmng.h"
+#include "mqttConfig.h"
+#include "loggingConfig.h"
 //=============================================================================
 
 //=============================================================================
@@ -17,7 +18,7 @@
 #define TEMP_CFG_MQTT_COMP_TYPE     "temperature"
 #define TEMP_CFG_MQTT_COMP_FLAGS    NULL
 
-#define TEMP_CFG_MQTT_COMP_ID    MQTT_MNG_CONFIG_DEV_ID "/" TEMP_CFG_MQTT_COMP_NAME
+#define TEMP_CFG_MQTT_COMP_ID    MQTT_CONFIG_DEV_ID "/" TEMP_CFG_MQTT_COMP_NAME
 
 #define TASK_TEMPERATURE_CFG_PERIOD_MS      3000
 //=============================================================================
@@ -41,6 +42,7 @@ static void taskTemperatureMqttUpdate(uint16_t temp);
 //-----------------------------------------------------------------------------
 void* taskTemperature(void *param){
 
+    (void)param;
     taskTemperatureInitialize();
 
     while(1){
@@ -60,7 +62,7 @@ static void taskTemperatureInitialize(void){
 
     while( mqttmngInitDone() != 0 );
 
-    mqttmngPublishComponent(
+    mqttmngAddComponent(
         TEMP_CFG_MQTT_COMP_NAME,
         TEMP_CFG_MQTT_COMP_TYPE,
         TEMP_CFG_MQTT_COMP_FLAGS
@@ -74,7 +76,7 @@ static void taskTemperatureInitialize(void){
 //-----------------------------------------------------------------------------
 static void taskTemperatureMqttUpdate(uint16_t temp){
 
-    mqttmngPayload_t payload;
+    mqttPayload_t payload;
 
     payload.data = (void *)&temp;
     payload.size = 2;

@@ -22,8 +22,8 @@
 
 typedef struct{
 
-	/* Blink period */
-	uint32_t period;
+    /* Blink period */
+    uint32_t period;
 
 } blinkControl_t;
 //=============================================================================
@@ -39,7 +39,6 @@ blinkControl_t xblinkControl;
 /*-------------------------------- Prototypes -------------------------------*/
 //=============================================================================
 static void taskBlinkInitialize(void);
-static int32_t taskBlinkPeriodUpdate(void *in, uint32_t insize, void **out, uint32_t maxoutsize);
 static void taskBlinkCheckWifi(void);
 static void taskBlinkToggle(void);
 //=============================================================================
@@ -50,11 +49,13 @@ static void taskBlinkToggle(void);
 //-----------------------------------------------------------------------------
 void taskBlink(void *param){
 
+    (void) param;
+
     taskBlinkInitialize();
 
     while(1){
         taskBlinkCheckWifi();
-    	taskBlinkToggle();
+        taskBlinkToggle();
         vTaskDelay(xblinkControl.period);
     }
 }
@@ -67,19 +68,8 @@ void taskBlink(void *param){
 //-----------------------------------------------------------------------------
 static void taskBlinkInitialize(void){
 
-	/* Sets default blinking period */
-	xblinkControl.period = TASK_BLINK_CONFIG_DEFAULT_PERIOD_MS / portTICK_PERIOD_MS;
-}
-//-----------------------------------------------------------------------------
-static int32_t taskBlinkPeriodUpdate(void *in, uint32_t insize, void **out, uint32_t maxoutsize){
-
-	uint32_t period;
-
-	period = *((uint32_t *)(in));
-
-	xblinkControl.period = period / portTICK_PERIOD_MS;
-
-    return 0;
+    /* Sets default blinking period */
+    xblinkControl.period = TASK_BLINK_CONFIG_DEFAULT_PERIOD_MS / portTICK_PERIOD_MS;
 }
 //-----------------------------------------------------------------------------
 static void taskBlinkCheckWifi(void){

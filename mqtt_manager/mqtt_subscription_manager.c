@@ -32,7 +32,8 @@
 
 /* Include header for the subscription manager. */
 #include "mqtt_subscription_manager.h"
-#include "mqttmngConfig.h"
+#include "mqttConfig.h"
+#include "mqttLoggingConfig.h"
 
 
 /**
@@ -50,7 +51,7 @@ typedef struct SubscriptionManagerRecord
  * @brief The default value for the maximum size of the callback registry in the
  * subscription manager.
  */
-#define MAX_SUBSCRIPTION_CALLBACK_RECORDS   MQTT_MNG_CONFIG_MAX_SUBS
+#define MAX_SUBSCRIPTION_CALLBACK_RECORDS   MQTT_CONFIG_MAX_SUBS
 //#ifndef MAX_SUBSCRIPTION_CALLBACK_RECORDS
 //    #define MAX_SUBSCRIPTION_CALLBACK_RECORDS    5
 //#endif
@@ -82,7 +83,7 @@ void SubscriptionManager_DispatchHandler( MQTTContext_t * pContext,
                                &matchStatus ) == MQTTSuccess ) &&
             ( matchStatus == true ) )
         {
-            LogInfo( ( "Invoking subscription callback of matching topic filter: "
+            LogDebug( ( "Invoking subscription callback of matching topic filter: "
                        "TopicFilter=%.*s, TopicName=%.*s",
                        callbackRecordList[ listIndex ].topicFilterLength,
                        callbackRecordList[ listIndex ].pTopicFilter,

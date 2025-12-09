@@ -7,25 +7,12 @@
 #include "stdint.h"
 #include "stddef.h"
 
-#include "mqttmngConfig.h"
-#include "mqtt_subscription_manager.h"
+#include "mqttDefs.h"
 //============================================================================
 
 //=============================================================================
 /*------------------------------- Definitions -------------------------------*/
 //=============================================================================
-typedef SubscriptionManagerCallback_t mqttmngSubscrCb_t;
-
-typedef int32_t (*mqttmngLock_t)(uint32_t timeout);
-typedef void (*mqttmngUnlock_t)(void);
-
-typedef struct 
-{
-    uint8_t retain;
-    uint8_t dup;
-    const void * data;
-    uint32_t size;
-} mqttmngPayload_t;
 
 //=============================================================================
 
@@ -33,15 +20,15 @@ typedef struct
 /*-------------------------------- Functions --------------------------------*/
 //=============================================================================
 //-----------------------------------------------------------------------------
-int32_t mqttmngInit(mqttmngLock_t lock, mqttmngUnlock_t unlock);
+int32_t mqttmngInit(const char *clientId, mqttLock_t lock, mqttUnlock_t unlock);
 //-----------------------------------------------------------------------------
 void mqttmngRun(void);
 //-----------------------------------------------------------------------------
-int32_t mqttmngPublishComponent(const char *name, const char *type, const char *flags);
+int32_t mqttmngPublish(const char *topic, mqttPayload_t *payload);
 //-----------------------------------------------------------------------------
-int32_t mqttmngPublish(const char *topic, mqttmngPayload_t *payload);
+int32_t mqttmngSubscribe(const char *topic, mqttSubscrCb_t callback);
 //-----------------------------------------------------------------------------
-int32_t mqttmngSubscribe(const char *topic, mqttmngSubscrCb_t callback);
+int32_t mqttmngAddComponent(const char *name, const char *type, const char *flags);
 //-----------------------------------------------------------------------------
 int mqttmngInitDone(void);
 //-----------------------------------------------------------------------------

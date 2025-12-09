@@ -7,10 +7,11 @@ add_library(mqtt_manager)
 # Include MQTT library's source and header path variables.
 include( coreMQTT/mqttFilePaths.cmake )
 
-# MQTT manager
+# MQTT/MQTT manager
 target_sources(
     mqtt_manager
     PRIVATE
+    mqtt_manager/mqtt.c
     mqtt_manager/mqttmng.c
     mqtt_manager/mqtt_subscription_manager.c
 )
@@ -37,7 +38,7 @@ target_include_directories(
     ${MQTT_INCLUDE_PUBLIC_DIRS}
     platform/transport/
     platform/clock/
-    logging/
+    clogging/
     mqtt_manager/
 )
 

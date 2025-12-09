@@ -32,6 +32,8 @@
 
 #include "plaintext_transport.h"
 
+#include <errno.h>
+
 /*-----------------------------------------------------------*/
 
 /* Each compilation unit must define the NetworkContext struct. */
