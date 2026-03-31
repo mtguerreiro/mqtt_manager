@@ -93,8 +93,24 @@ int32_t Plaintext_Send( NetworkContext_t * pNetworkContext,
 
     (void) pNetworkContext;
     int32_t ret = -1;
-   
-    ret = send(MQTT_MNG_PICO_W5500_SN, (uint8_t *)pBuffer, (uint16_t)bytesToSend);
+    size_t ntx;
+    size_t bytesSent;
+
+    bytesSent = 0;
+
+    while( bytesSent < bytesToSend ){
+
+        ntx = bytesToSend - bytesSent;
+        if( ntx > 2048 ) ntx = 2048;
+
+        ret = send(MQTT_MNG_PICO_W5500_SN, (uint8_t *)pBuffer, (uint16_t)ntx);
+
+        if( ret < 0 ) break;
+
+        bytesSent += (unsigned int)ret;
+        pBuffer += (unsigned int)ret;
+    }
+    if( bytesSent == bytesToSend ) ret = (int32_t) bytesToSend;
 
     return ret;
 }
